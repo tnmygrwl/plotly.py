@@ -19,14 +19,13 @@ class ValidatorCache(object):
                 if parent_path == "layout":
                     from .graph_objects import Layout
 
-                    match = Layout._subplotid_prop_re.match(prop_name)
-                    if match:
+                    if match := Layout._subplotid_prop_re.match(prop_name):
                         lookup_name = match.group(1)
 
                 lookup_name = lookup_name or prop_name
-                class_name = lookup_name.title() + "Validator"
+                class_name = f"{lookup_name.title()}Validator"
                 validator = getattr(
-                    importlib.import_module("plotly.validators." + parent_path),
+                    importlib.import_module(f"plotly.validators.{parent_path}"),
                     class_name,
                 )(plotly_name=prop_name)
             ValidatorCache._cache[key] = validator

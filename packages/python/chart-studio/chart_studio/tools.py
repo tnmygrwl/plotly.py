@@ -264,9 +264,7 @@ def _get_embed_url(file_owner_or_url, file_id=None):
         file_owner = urlsplit.path.split("/")[1].split("~")[1]
         file_id = urlsplit.path.split("/")[2]
 
-        # to check for share_key we check urlsplit.query
-        query_dict = six.moves.urllib.parse.parse_qs(urlsplit.query)
-        if query_dict:
+        if query_dict := six.moves.urllib.parse.parse_qs(urlsplit.query):
             share_key = query_dict["share_key"][-1]
         else:
             share_key = ""
@@ -393,8 +391,5 @@ def embed(file_owner_or_url, file_id=None, width="100%", height=525):
             feedback_contact = "Contact your On-Premise account executive"
 
         warnings.warn(
-            "Looks like you're not using IPython or Sage to embed this "
-            "plot. If you just want the *embed code*,\ntry using "
-            "`get_embed()` instead."
-            "\nQuestions? {}".format(feedback_contact)
+            f"Looks like you're not using IPython or Sage to embed this plot. If you just want the *embed code*,\ntry using `get_embed()` instead.\nQuestions? {feedback_contact}"
         )

@@ -136,16 +136,8 @@ class _Dendrogram(object):
         self.sign = {self.xaxis: 1, self.yaxis: 1}
         self.layout = {self.xaxis: {}, self.yaxis: {}}
 
-        if self.orientation in ["left", "bottom"]:
-            self.sign[self.xaxis] = 1
-        else:
-            self.sign[self.xaxis] = -1
-
-        if self.orientation in ["right", "bottom"]:
-            self.sign[self.yaxis] = 1
-        else:
-            self.sign[self.yaxis] = -1
-
+        self.sign[self.xaxis] = 1 if self.orientation in ["left", "bottom"] else -1
+        self.sign[self.yaxis] = 1 if self.orientation in ["right", "bottom"] else -1
         if distfun is None:
             distfun = scs.distance.pdist
 
@@ -175,7 +167,7 @@ class _Dendrogram(object):
                 l_border, r_border + 1, int((r_border - l_border) / len(yvals))
             )
             # Regenerating the leaves pos from the self.zero_vals with equally intervals.
-            self.zero_vals = [v for v in correct_leaves_pos]
+            self.zero_vals = list(correct_leaves_pos)
 
         self.zero_vals.sort()
         self.layout = self.set_figure_layout(width, height)
@@ -356,16 +348,12 @@ class _Dendrogram(object):
         trace_list = []
 
         for i in range(len(icoord)):
-            # xs and ys are arrays of 4 points that make up the '∩' shapes
-            # of the dendrogram tree
             if self.orientation in ["top", "bottom"]:
                 xs = icoord[i]
+                ys = dcoord[i]
             else:
                 xs = dcoord[i]
 
-            if self.orientation in ["top", "bottom"]:
-                ys = dcoord[i]
-            else:
                 ys = icoord[i]
             color_key = color_list[i]
             hovertext_label = None
@@ -391,8 +379,8 @@ class _Dendrogram(object):
             except ValueError:
                 y_index = ""
 
-            trace["xaxis"] = "x" + x_index
-            trace["yaxis"] = "y" + y_index
+            trace["xaxis"] = f"x{x_index}"
+            trace["yaxis"] = f"y{y_index}"
 
             trace_list.append(trace)
 

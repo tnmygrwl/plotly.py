@@ -19,17 +19,16 @@ from chart_studio.tests.utils import PlotlyTestCase
 
 def is_trivial(obj):
     if isinstance(obj, (dict, list)):
-        if len(obj):
-            if isinstance(obj, dict):
-                tests = (is_trivial(obj[key]) for key in obj)
-                return all(tests)
-            elif isinstance(obj, list):
-                tests = (is_trivial(entry) for entry in obj)
-                return all(tests)
-            else:
-                return False
-        else:
+        if not len(obj):
             return True
+        if isinstance(obj, dict):
+            tests = (is_trivial(obj[key]) for key in obj)
+            return all(tests)
+        elif isinstance(obj, list):
+            tests = (is_trivial(entry) for entry in obj)
+            return all(tests)
+        else:
+            return False
     elif obj is None:
         return True
     else:

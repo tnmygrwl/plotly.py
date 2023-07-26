@@ -132,12 +132,11 @@ class Stream:
 
         """
 
-        context = None
-
-        if not self._ssl_verification_enabled:
-            context = ssl._create_unverified_context()
-
-        return context
+        return (
+            ssl._create_unverified_context()
+            if not self._ssl_verification_enabled
+            else None
+        )
 
     def _connect(self):
         """ Initialize an HTTP/HTTPS connection with chunked Transfer-Encoding
@@ -158,17 +157,13 @@ class Stream:
             else:
                 self._conn = http_client.HTTPConnection(proxy_server, proxy_port)
 
-            tunnel_headers = None
-            if proxy_auth:
-                tunnel_headers = {"Proxy-Authorization": proxy_auth}
-
+            tunnel_headers = {"Proxy-Authorization": proxy_auth} if proxy_auth else None
             self._conn.set_tunnel(server, port, headers=tunnel_headers)
+        elif ssl_enabled:
+            context = self._get_ssl_context()
+            self._conn = http_client.HTTPSConnection(server, port, context=context)
         else:
-            if ssl_enabled:
-                context = self._get_ssl_context()
-                self._conn = http_client.HTTPSConnection(server, port, context=context)
-            else:
-                self._conn = http_client.HTTPConnection(server, port)
+            self._conn = http_client.HTTPConnection(server, port)
 
         self._conn.putrequest("POST", self._url)
         self._conn.putheader("Transfer-Encoding", "chunked")
@@ -276,7 +271,7 @@ class Stream:
             # Windows machines are the error codes
             # that start with 1
             # (http://msdn.microsoft.com/en-ca/library/windows/desktop/ms740668(v=vs.85).aspx)
-            if e.errno == 35 or e.errno == 10035:
+            if e.errno in [35, 10035]:
                 # This is the "Resource temporarily unavailable" error
                 # which is thrown cuz there was nothing to receive, i.e.
                 # the server hasn't returned a response yet.
@@ -284,7 +279,7 @@ class Stream:
                 # should be tried again.
                 # So, assume that the connection is still open.
                 return True
-            elif e.errno == 54 or e.errno == 10054:
+            elif e.errno in [54, 10054]:
                 # This is the "Connection reset by peer" error
                 # which is thrown cuz the server reset the
                 # socket, so the connection is closed.
@@ -321,21 +316,19 @@ class Stream:
             try:
                 self._connect()
             except http_client.socket.error as e:
-                # Attempt to reconnect if the connection was refused
-                if e.errno == 61 or e.errno == 10061:
-                    # errno 61 is the "Connection Refused" error
-                    time.sleep(self._delay)
-                    self._delay += self._delay  # fibonacii delays
-                    self._tries += 1
-                    if self._tries < self.maxtries:
-                        self._reconnect()
-                    else:
-                        self._reset_retries()
-                        raise e
-                else:
+                if e.errno not in [61, 10061]:
                     # Unknown scenario
                     raise e
 
+                # errno 61 is the "Connection Refused" error
+                time.sleep(self._delay)
+                self._delay += self._delay  # fibonacii delays
+                self._tries += 1
+                if self._tries < self.maxtries:
+                    self._reconnect()
+                else:
+                    self._reset_retries()
+                    raise e
         # Reconnect worked - reset _closed
         self._closed = False
 

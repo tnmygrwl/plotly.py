@@ -34,25 +34,20 @@ CUSTOM_LABEL_ERROR = (
 
 
 def _is_flipped(num):
-    if num >= THRES_FOR_FLIPPED_FACET_TITLES:
-        flipped = True
-    else:
-        flipped = False
-    return flipped
+    return num >= THRES_FOR_FLIPPED_FACET_TITLES
 
 
 def _return_label(original_label, facet_labels, facet_var):
     if isinstance(facet_labels, dict):
-        label = facet_labels[original_label]
+        return facet_labels[original_label]
     elif isinstance(facet_labels, str):
-        label = "{}: {}".format(facet_var, original_label)
+        return f"{facet_var}: {original_label}"
     else:
-        label = original_label
-    return label
+        return original_label
 
 
 def _legend_annotation(color_name):
-    legend_title = dict(
+    return dict(
         textangle=0,
         xanchor="left",
         yanchor="middle",
@@ -61,10 +56,9 @@ def _legend_annotation(color_name):
         showarrow=False,
         xref="paper",
         yref="paper",
-        text="factor({})".format(color_name),
+        text=f"factor({color_name})",
         font=dict(size=13, color="#000000"),
     )
-    return legend_title
 
 
 def _annotation_dict(
@@ -82,21 +76,20 @@ def _annotation_dict(
             y = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
             x = 1.03
             textangle = 90
-    else:
-        if row_col == "col":
-            xanchor = "center"
-            yanchor = "bottom"
-            x = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
-            y = 1.0
-            textangle = 270
-        elif row_col == "row":
-            xanchor = "left"
-            yanchor = "middle"
-            y = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
-            x = 1.0
-            textangle = 0
+    elif row_col == "col":
+        xanchor = "center"
+        yanchor = "bottom"
+        x = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
+        y = 1.0
+        textangle = 270
+    elif row_col == "row":
+        xanchor = "left"
+        yanchor = "middle"
+        y = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
+        x = 1.0
+        textangle = 0
 
-    annotation_dict = dict(
+    return dict(
         textangle=textangle,
         xanchor=xanchor,
         yanchor=yanchor,
@@ -108,7 +101,6 @@ def _annotation_dict(
         text=str(text),
         font=dict(size=13, color=AXIS_TITLE_COLOR),
     )
-    return annotation_dict
 
 
 def _axis_title_annotation(text, x_or_y_axis):
@@ -124,7 +116,7 @@ def _axis_title_annotation(text, x_or_y_axis):
     if not text:
         text = ""
 
-    annot = {
+    return {
         "font": {"color": "#000000", "size": AXIS_TITLE_SIZE},
         "showarrow": False,
         "text": text,
@@ -136,7 +128,6 @@ def _axis_title_annotation(text, x_or_y_axis):
         "yanchor": "middle",
         "yref": "paper",
     }
-    return annot
 
 
 def _add_shapes_to_fig(fig, annot_rect_color, flipped_rows=False, flipped_cols=False):
@@ -234,7 +225,7 @@ def _facet_grid_color_categorical(
 
             fig.append_trace(trace, 1, 1)
 
-    elif (facet_row and not facet_col) or (not facet_row and facet_col):
+    elif facet_row and not facet_col or not facet_row:
         groups_by_facet = list(df.groupby(facet_row if facet_row else facet_col))
         for j, group in enumerate(groups_by_facet):
             for color_val in df[color_name].unique():
@@ -274,7 +265,7 @@ def _facet_grid_color_categorical(
                 )
             )
 
-    elif facet_row and facet_col:
+    else:
         groups_by_facets = list(df.groupby([facet_row, facet_col]))
         tuple_to_facet_group = {item[0]: item[1] for item in groups_by_facets}
 
@@ -441,7 +432,7 @@ def _facet_grid_color_numerical(
                 )
             )
 
-    elif facet_row and facet_col:
+    elif facet_row:
         groups_by_facets = list(df.groupby([facet_row, facet_col]))
         tuple_to_facet_group = {item[0]: item[1] for item in groups_by_facets}
 
@@ -556,7 +547,7 @@ def _facet_grid(
 
         fig.append_trace(trace, 1, 1)
 
-    elif (facet_row and not facet_col) or (not facet_row and facet_col):
+    elif facet_row and not facet_col or not facet_row:
         groups_by_facet = list(df.groupby(facet_row if facet_row else facet_col))
         for j, group in enumerate(groups_by_facet):
             trace = dict(
@@ -594,7 +585,7 @@ def _facet_grid(
                 )
             )
 
-    elif facet_row and facet_col:
+    else:
         groups_by_facets = list(df.groupby([facet_row, facet_col]))
         tuple_to_facet_group = {item[0]: item[1] for item in groups_by_facets}
 

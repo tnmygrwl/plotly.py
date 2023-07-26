@@ -9,5 +9,3 @@ raise Exception(
     Please refer to ./packages/python/plotly/setup.py instead.
     """
 )
-
-setup(name="plotly")

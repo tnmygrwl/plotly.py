@@ -131,7 +131,7 @@ def plot(data_frame, kind, **kwargs):
         )
 
     raise NotImplementedError(
-        "kind='%s' not yet supported for plotting.backend='plotly'" % kind
+        f"kind='{kind}' not yet supported for plotting.backend='plotly'"
     )
 
 

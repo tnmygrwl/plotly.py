@@ -523,18 +523,10 @@ The {arg} argument to make_subplots must be one of: {valid_vals}
 
     # ### horizontal_spacing ###
     if horizontal_spacing is None:
-        if has_secondary_y:
-            horizontal_spacing = 0.4 / cols
-        else:
-            horizontal_spacing = 0.2 / cols
-
+        horizontal_spacing = 0.4 / cols if has_secondary_y else 0.2 / cols
     # ### vertical_spacing ###
     if vertical_spacing is None:
-        if subplot_titles is not None:
-            vertical_spacing = 0.5 / rows
-        else:
-            vertical_spacing = 0.3 / rows
-
+        vertical_spacing = 0.5 / rows if subplot_titles is not None else 0.3 / rows
     # ### subplot titles ###
     if subplot_titles is None:
         subplot_titles = [""] * rows * cols
@@ -824,20 +816,12 @@ def _configure_shared_axes(layout, grid_ref, specs, x_or_y, shared, row_dir):
 
     layout_key_ind = ["x", "y"].index(x_or_y)
 
-    if row_dir < 0:
-        rows_iter = range(rows - 1, -1, -1)
-    else:
-        rows_iter = range(rows)
-
+    rows_iter = range(rows - 1, -1, -1) if row_dir < 0 else range(rows)
     def update_axis_matches(first_axis_id, subplot_ref, spec, remove_label):
         if subplot_ref is None:
             return first_axis_id
 
-        if x_or_y == "x":
-            span = spec["colspan"]
-        else:
-            span = spec["rowspan"]
-
+        span = spec["colspan"] if x_or_y == "x" else spec["rowspan"]
         if subplot_ref.subplot_type == "xy" and span == 1:
             if first_axis_id is None:
                 first_axis_name = subplot_ref.layout_keys[layout_key_ind]
@@ -1032,7 +1016,7 @@ def _validate_coerce_subplot_type(subplot_type):
     subplot_type = _subplot_type_for_trace_type(subplot_type)
 
     if subplot_type is None:
-        raise ValueError("Unsupported subplot type: {}".format(repr(orig_subplot_type)))
+        raise ValueError(f"Unsupported subplot type: {repr(orig_subplot_type)}")
     else:
         return subplot_type
 
@@ -1063,15 +1047,13 @@ def _init_subplot(
     elif subplot_type == "domain":
         subplot_refs = _init_subplot_domain(x_domain, y_domain)
     else:
-        raise ValueError("Unsupported subplot type: {}".format(repr(subplot_type)))
+        raise ValueError(f"Unsupported subplot type: {repr(subplot_type)}")
 
     return subplot_refs
 
 
 def _get_cartesian_label(x_or_y, r, c, cnt):
-    # Default label (given strictly by cnt)
-    label = "{x_or_y}{cnt}".format(x_or_y=x_or_y, cnt=cnt)
-    return label
+    return "{x_or_y}{cnt}".format(x_or_y=x_or_y, cnt=cnt)
 
 
 def _build_subplot_title_annotations(
@@ -1090,11 +1072,8 @@ def _build_subplot_title_annotations(
         xanchor = "center"
         yanchor = "bottom"
 
-        for x_domains in x_dom:
-            subtitle_pos_x.append(sum(x_domains) / 2.0)
-        for y_domains in y_dom:
-            subtitle_pos_y.append(y_domains[1])
-
+        subtitle_pos_x.extend(sum(x_domains) / 2.0 for x_domains in x_dom)
+        subtitle_pos_y.extend(y_domains[1] for y_domains in y_dom)
         yshift = offset
         xshift = 0
     elif title_edge == "bottom":
@@ -1102,11 +1081,8 @@ def _build_subplot_title_annotations(
         xanchor = "center"
         yanchor = "top"
 
-        for x_domains in x_dom:
-            subtitle_pos_x.append(sum(x_domains) / 2.0)
-        for y_domains in y_dom:
-            subtitle_pos_y.append(y_domains[0])
-
+        subtitle_pos_x.extend(sum(x_domains) / 2.0 for x_domains in x_dom)
+        subtitle_pos_y.extend(y_domains[0] for y_domains in y_dom)
         yshift = -offset
         xshift = 0
     elif title_edge == "right":
@@ -1114,8 +1090,7 @@ def _build_subplot_title_annotations(
         xanchor = "left"
         yanchor = "middle"
 
-        for x_domains in x_dom:
-            subtitle_pos_x.append(x_domains[1])
+        subtitle_pos_x.extend(x_domains[1] for x_domains in x_dom)
         for y_domains in y_dom:
             subtitle_pos_y.append(sum(y_domains) / 2.0)
 
@@ -1138,9 +1113,7 @@ def _build_subplot_title_annotations(
 
     plot_titles = []
     for index in range(len(subplot_titles)):
-        if not subplot_titles[index] or index >= len(subtitle_pos_y):
-            pass
-        else:
+        if subplot_titles[index] and index < len(subtitle_pos_y):
             annot = {
                 "y": subtitle_pos_y[index],
                 "xref": "paper",
@@ -1207,16 +1180,13 @@ def _build_grid_str(specs, grid_ref, insets, insets_ref, row_seq):
     # Find max len of _cell_str, add define a padding function
     cell_len = (
         max(
-            [
-                len(_get_cell_str(r, c, ref))
-                for r, row_ref in enumerate(grid_ref)
-                for c, ref in enumerate(row_ref)
-                if ref
-            ]
+            len(_get_cell_str(r, c, ref))
+            for r, row_ref in enumerate(grid_ref)
+            for c, ref in enumerate(row_ref)
+            if ref
         )
         + len(s_str)
-        + len(e_str)
-    )
+    ) + len(e_str)
 
     def _pad(s, cell_len=cell_len):
         return " " * (cell_len - len(s))
@@ -1250,11 +1220,7 @@ def _build_grid_str(specs, grid_ref, insets, insets_ref, row_seq):
                     ) + e_str
             else:
                 padding = " " * (cell_len - len(cell_str) - 2)
-                if spec["rowspan"] > 1:
-                    cell_str += padding + e_top
-                else:
-                    cell_str += padding + e_str
-
+                cell_str += padding + e_top if spec["rowspan"] > 1 else padding + e_str
             if spec["rowspan"] > 1:
                 for cc in range(spec["colspan"]):
                     for rr in range(1, spec["rowspan"]):
@@ -1437,8 +1403,8 @@ def _get_subplot_ref_for_trace(trace):
         )
 
     elif "xaxis" in trace and "yaxis" in trace:
-        xaxis_name = "xaxis" + trace.xaxis[1:] if trace.xaxis else "xaxis"
-        yaxis_name = "yaxis" + trace.yaxis[1:] if trace.yaxis else "yaxis"
+        xaxis_name = f"xaxis{trace.xaxis[1:]}" if trace.xaxis else "xaxis"
+        yaxis_name = f"yaxis{trace.yaxis[1:]}" if trace.yaxis else "yaxis"
 
         return SubplotRef(
             subplot_type="xy",

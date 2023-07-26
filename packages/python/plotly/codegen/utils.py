@@ -73,8 +73,7 @@ def build_from_imports_py(rel_modules=(), rel_classes=(), init_extra=""):
 
     imports_str = "\n    ".join(import_lines)
 
-    result = f"""\
-import sys
+    return f"""\\n    #import sys
 if sys.version_info < (3, 7):
     {imports_str}
 else:
@@ -87,7 +86,6 @@ else:
 
 {init_extra}
 """
-    return result
 
 
 def write_init_py(pkg_root, path_parts, rel_modules=(), rel_classes=(), init_extra=""):
@@ -151,7 +149,7 @@ def format_description(desc):
     ]
 
     for s in other_strings:
-        desc = desc.replace("*%s*" % s, '"%s"' % s)
+        desc = desc.replace(f"*{s}*", f'"{s}"')
 
     # Replace {array} with list
     desc = desc.replace("an {array}", "a list")
@@ -177,28 +175,22 @@ CUSTOM_VALIDATOR_DATATYPES = {
     "layout.template": "_plotly_utils.basevalidators.BaseTemplateValidator",
     "frame.data": "plotly.validators.DataValidator",
     "frame.layout": "plotly.validators.LayoutValidator",
+} | {
+    prop: "_plotly_utils.basevalidators.DashValidator"
+    for prop in [
+        "scatter.line.dash",
+        "histogram2dcontour.line.dash",
+        "scattergeo.line.dash",
+        "scatterpolar.line.dash",
+        "ohlc.line.dash",
+        "ohlc.decreasing.line.dash",
+        "ohlc.increasing.line.dash",
+        "contourcarpet.line.dash",
+        "contour.line.dash",
+        "scatterternary.line.dash",
+        "scattercarpet.line.dash",
+    ]
 }
-
-# Add custom dash validators
-CUSTOM_VALIDATOR_DATATYPES.update(
-    {
-        prop: "_plotly_utils.basevalidators.DashValidator"
-        for prop in [
-            "scatter.line.dash",
-            "histogram2dcontour.line.dash",
-            "scattergeo.line.dash",
-            "scatterpolar.line.dash",
-            "ohlc.line.dash",
-            "ohlc.decreasing.line.dash",
-            "ohlc.increasing.line.dash",
-            "contourcarpet.line.dash",
-            "contour.line.dash",
-            "scatterternary.line.dash",
-            "scattercarpet.line.dash",
-        ]
-    }
-)
-
 # Mapping from property string (as found in plot-schema.json) to a custom
 # class name. If not included here, names are converted to TitleCase and
 # underscores are removed.
@@ -345,10 +337,7 @@ class PlotlyNode:
         -------
         str
         """
-        if len(self.node_path) == 0:
-            return self.root_name
-        else:
-            return self.node_path[-1]
+        return self.root_name if len(self.node_path) == 0 else self.node_path[-1]
 
     @property
     def name_datatype_class(self):
@@ -382,11 +371,7 @@ class PlotlyNode:
         # ----------------------
         name1 = self.plotly_name[0].lower() + self.plotly_name[1:]
 
-        # Replace capital chars by underscore-lower
-        # -----------------------------------------
-        name2 = "".join([("" if not c.isupper() else "_") + c.lower() for c in name1])
-
-        return name2
+        return "".join([("" if not c.isupper() else "_") + c.lower() for c in name1])
 
     @property
     def name_property(self):
@@ -422,7 +407,7 @@ class PlotlyNode:
         -------
         str
         """
-        return self.name_property.title() + "Validator"
+        return f"{self.name_property.title()}Validator"
 
     @property
     def name_base_validator(self) -> str:
@@ -434,18 +419,14 @@ class PlotlyNode:
         str
         """
         if self.path_str in CUSTOM_VALIDATOR_DATATYPES:
-            validator_base = f"{CUSTOM_VALIDATOR_DATATYPES[self.path_str]}"
+            return f"{CUSTOM_VALIDATOR_DATATYPES[self.path_str]}"
         elif self.plotly_name.endswith("src") and self.datatype == "string":
-            validator_base = f"_plotly_utils.basevalidators." f"SrcValidator"
+            return '_plotly_utils.basevalidators.SrcValidator'
         elif self.plotly_name == "title" and self.datatype == "compound":
-            validator_base = "_plotly_utils.basevalidators.TitleValidator"
+            return "_plotly_utils.basevalidators.TitleValidator"
         else:
             datatype_title_case = self.datatype.title().replace("_", "")
-            validator_base = (
-                f"_plotly_utils.basevalidators." f"{datatype_title_case}Validator"
-            )
-
-        return validator_base
+            return f"_plotly_utils.basevalidators.{datatype_title_case}Validator"
 
     # Validators
     # ----------
@@ -472,9 +453,7 @@ class PlotlyNode:
 
         if self.is_compound:
             params["data_class_str"] = repr(self.name_datatype_class)
-            params["data_docs"] = (
-                '"""' + self.get_constructor_params_docstring() + '\n"""'
-            )
+            params["data_docs"] = f'"""{self.get_constructor_params_docstring()}' + '\n"""'
         else:
             assert self.is_simple
 
@@ -493,15 +472,11 @@ class PlotlyNode:
 
             # Add extra properties
             if self.datatype == "color" and self.parent:
-                # Check for colorscale sibling. We use the presence of a
-                # colorscale sibling to determine whether numeric color
-                # values are permissible
-                colorscale_node_list = [
+                if colorscale_node_list := [
                     node
                     for node in self.parent.child_datatypes
                     if node.datatype == "colorscale"
-                ]
-                if colorscale_node_list:
+                ]:
                     colorscale_path = colorscale_node_list[0].path_str
                     params["colorscale_path"] = repr(colorscale_path)
             elif self.datatype == "literal":
@@ -528,15 +503,14 @@ class PlotlyNode:
         validator_parts = self.name_base_validator.split(".")
         if validator_parts[0] != "_plotly_utils":
             return None
-        else:
-            validator_class_str = validator_parts[-1]
-            validator_module = ".".join(validator_parts[:-1])
+        validator_class_str = validator_parts[-1]
+        validator_module = ".".join(validator_parts[:-1])
 
-            validator_class = getattr(
-                import_module(validator_module), validator_class_str
-            )
+        validator_class = getattr(
+            import_module(validator_module), validator_class_str
+        )
 
-            return validator_class(**params)
+        return validator_class(**params)
 
     # Datatypes
     # ---------
@@ -638,10 +612,7 @@ class PlotlyNode:
         -------
         bool
         """
-        if self.parent:
-            return self.parent.is_array
-        else:
-            return False
+        return self.parent.is_array if self.parent else False
 
     @property
     def is_datatype(self) -> bool:
@@ -695,16 +666,12 @@ class PlotlyNode:
         tuple of str
         """
         res = [self.root_name] if self.root_name else []
-        for i, p in enumerate(self.node_path):
-            # Handle array datatypes
-            if p == "items" or (
-                i < len(self.node_path) - 1 and self.node_path[i + 1] == "items"
-            ):
-                # e.g. [parcoords, dimensions, items, dimension] ->
-                #      [parcoords, dimension]
-                pass
-            else:
-                res.append(self.tidy_path_part(p))
+        res.extend(
+            self.tidy_path_part(p)
+            for i, p in enumerate(self.node_path)
+            if p != "items"
+            and (i >= len(self.node_path) - 1 or self.node_path[i + 1] != "items")
+        )
         return tuple(res)
 
     # Node path strings
@@ -730,10 +697,7 @@ class PlotlyNode:
         -------
         str
         """
-        path_str = ""
-        for p in self.path_parts:
-            path_str += "." + p
-        return path_str
+        return "".join(f".{p}" for p in self.path_parts)
 
     @property
     def parent_path_parts(self):
@@ -767,10 +731,7 @@ class PlotlyNode:
         -------
         str
         """
-        path_str = ""
-        for p in self.parent_path_parts:
-            path_str += "." + p
-        return path_str
+        return "".join(f".{p}" for p in self.parent_path_parts)
 
     # Children
     # --------
@@ -929,8 +890,7 @@ class PlotlyNode:
 
         subtype_nodes = self.child_datatypes
         for subtype_node in subtype_nodes:
-            raw_description = subtype_node.description
-            if raw_description:
+            if raw_description := subtype_node.description:
                 subtype_description = raw_description
             elif subtype_node.is_array_element:
                 if (
@@ -1152,10 +1112,7 @@ class LayoutNode(PlotlyNode):
 
     @property
     def plotly_name(self) -> str:
-        if len(self.node_path) == 0:
-            return self.root_name
-        else:
-            return self.node_path[-1]
+        return self.root_name if len(self.node_path) == 0 else self.node_path[-1]
 
     # Description
     # -----------
@@ -1252,19 +1209,10 @@ class ElementDefaultsNode(PlotlyNode):
 
     @property
     def description(self):
-        array_property_path = self.parent_path_str + "." + self.array_node.name_property
-
-        if isinstance(self.array_node, TraceNode):
-            data_path = "data."
-        else:
-            data_path = ""
-
+        data_path = "data." if isinstance(self.array_node, TraceNode) else ""
+        array_property_path = f"{self.parent_path_str}.{self.array_node.name_property}"
         defaults_property_path = (
-            "layout.template."
-            + data_path
-            + self.parent_path_str
-            + "."
-            + self.plotly_name
+            f"layout.template.{data_path}{self.parent_path_str}.{self.plotly_name}"
         )
         return f"""\
 When used in a template
@@ -1282,7 +1230,7 @@ of {array_property_path}"""
 
     @property
     def plotly_name(self):
-        return self.element_node.plotly_name + "defaults"
+        return f"{self.element_node.plotly_name}defaults"
 
     @property
     def name_datatype_class(self):
@@ -1315,13 +1263,8 @@ class MappedPropNode(PlotlyNode):
 
     @property
     def description(self):
-        res = (
-            f"""\
-Deprecated: Please use {self.mapped_prop_node.path_str} instead.
-"""
-            + self.mapped_prop_node.description
-        )
-        return res
+        return f"""\\n        #Deprecated: Please use {self.mapped_prop_node.path_str} instead.
+{self.mapped_prop_node.description}"""
 
     @property
     def name_base_datatype(self):

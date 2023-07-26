@@ -29,8 +29,7 @@ class MetaTest(PlotlyTestCase):
 
     def random_filename(self):
         random_chars = [random.choice(string.ascii_uppercase) for _ in range(5)]
-        unique_filename = "Valid Grid with Meta " + "".join(random_chars)
-        return unique_filename
+        return "Valid Grid with Meta " + "".join(random_chars)
 
     def test_upload_meta(self):
         unique_filename = self.random_filename()

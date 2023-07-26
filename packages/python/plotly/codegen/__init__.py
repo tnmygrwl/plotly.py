@@ -49,7 +49,7 @@ def preprocess_schema(plotly_schema):
     # Create codegen-friendly template scheme
     template = {
         "data": {
-            trace + "s": {"items": {trace: {}}, "role": "object"}
+            f"{trace}s": {"items": {trace: {}}, "role": "object"}
             for trace in plotly_schema["traces"]
         },
         "layout": {},
@@ -266,7 +266,7 @@ def perform_codegen():
     for dep_clas in DEPRECATED_DATATYPES:
         root_datatype_imports.append(f"._deprecations.{dep_clas}")
 
-    optional_figure_widget_import = f"""
+    optional_figure_widget_import = """
 if sys.version_info < (3, 7):
     try:
         import ipywidgets as _ipywidgets
@@ -310,10 +310,7 @@ else:
     for path_parts in datatype_rel_class_imports:
         rel_classes = sorted(datatype_rel_class_imports[path_parts])
         rel_modules = sorted(datatype_rel_module_imports.get(path_parts, []))
-        if path_parts == ():
-            init_extra = optional_figure_widget_import
-        else:
-            init_extra = ""
+        init_extra = optional_figure_widget_import if path_parts == () else ""
         write_init_py(graph_objs_pkg, path_parts, rel_modules, rel_classes, init_extra)
 
     # ### Output graph_objects.py alias

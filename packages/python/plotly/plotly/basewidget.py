@@ -465,15 +465,9 @@ class BaseFigureWidget(BaseFigure, widgets.DOMWidget):
                     uid_trace._prop_defaults, delta
                 )
 
-                # #### Remove overlapping properties ####
-                # If a property is present in both _props and _prop_defaults
-                # then we remove the copy from _props
-                remove_props = self._remove_overlapping_props(
+                if remove_props := self._remove_overlapping_props(
                     uid_trace._props, uid_trace._prop_defaults
-                )
-
-                # #### Notify frontend model of property removal ####
-                if remove_props:
+                ):
                     remove_trace_props_msg = {
                         "remove_trace": trace_index,
                         "remove_props": remove_props,
@@ -521,15 +515,9 @@ class BaseFigureWidget(BaseFigure, widgets.DOMWidget):
                 self._layout_defaults, layout_delta
             )
 
-            # ### Remove overlapping properties ###
-            # If a property is present in both _layout and _layout_defaults
-            # then we remove the copy from _layout
-            removed_props = self._remove_overlapping_props(
+            if removed_props := self._remove_overlapping_props(
                 self._layout, self._layout_defaults
-            )
-
-            # ### Notify frontend model of property removal ###
-            if removed_props:
+            ):
                 remove_props_msg = {"remove_props": removed_props}
 
                 self._py2js_removeLayoutProps = remove_props_msg
@@ -674,7 +662,7 @@ class BaseFigureWidget(BaseFigure, widgets.DOMWidget):
             elif selector_type == "lasso":
                 selector = LassoSelector(**selector_state)
             else:
-                raise ValueError("Unsupported selector type: %s" % selector_type)
+                raise ValueError(f"Unsupported selector type: {selector_type}")
         else:
             selector = None
 
@@ -918,24 +906,20 @@ Note: Frames are supported by the plotly.graph_objs.Figure class"""
 
                     # ##### Transform property val recursively #####
                     input_val = to_data[from_prop]
-                    relayout_data.update(
-                        BaseFigureWidget._transform_data(
-                            input_val,
-                            from_val,
-                            should_remove=should_remove,
-                            relayout_path=relayout_path + (from_prop,),
-                        )
+                    relayout_data |= BaseFigureWidget._transform_data(
+                        input_val,
+                        from_val,
+                        should_remove=should_remove,
+                        relayout_path=relayout_path + (from_prop,),
                     )
 
-                # #### Handle simple vals directly ####
-                else:
-                    if from_prop not in to_data or not BasePlotlyType._vals_equal(
+                elif from_prop not in to_data or not BasePlotlyType._vals_equal(
                         to_data[from_prop], from_val
                     ):
 
-                        to_data[from_prop] = from_val
-                        relayout_path_prop = relayout_path + (from_prop,)
-                        relayout_data[relayout_path_prop] = from_val
+                    to_data[from_prop] = from_val
+                    relayout_path_prop = relayout_path + (from_prop,)
+                    relayout_data[relayout_path_prop] = from_val
 
             # ### Remove properties ###
             if should_remove:
@@ -944,8 +928,6 @@ Note: Frames are supported by the plotly.graph_objs.Figure class"""
                 ):
                     to_data.pop(remove_prop)
 
-        # Handle list
-        # -----------
         elif isinstance(to_data, list):
 
             # ### Validate from_data ###
@@ -979,10 +961,8 @@ Note: Frames are supported by the plotly.graph_objs.Figure class"""
                         )
                     )
 
-                # #### Handle simple elements directly ####
-                else:
-                    if not BasePlotlyType._vals_equal(to_data[i], from_val):
-                        to_data[i] = from_val
-                        relayout_data[relayout_path + (i,)] = from_val
+                elif not BasePlotlyType._vals_equal(to_data[i], from_val):
+                    to_data[i] = from_val
+                    relayout_data[relayout_path + (i,)] = from_val
 
         return relayout_data

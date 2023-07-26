@@ -224,10 +224,7 @@ class _Candlestick(object):
         self.high = high
         self.low = low
         self.close = close
-        if dates is not None:
-            self.x = dates
-        else:
-            self.x = [x for x in range(len(self.open))]
+        self.x = dates if dates is not None else list(range(len(self.open)))
         self.get_candle_increase()
 
     def get_candle_increase(self):
@@ -241,12 +238,16 @@ class _Candlestick(object):
         increase_x = []
         for index in range(len(self.open)):
             if self.close[index] > self.open[index]:
-                increase_y.append(self.low[index])
-                increase_y.append(self.open[index])
-                increase_y.append(self.close[index])
-                increase_y.append(self.close[index])
-                increase_y.append(self.close[index])
-                increase_y.append(self.high[index])
+                increase_y.extend(
+                    (
+                        self.low[index],
+                        self.open[index],
+                        self.close[index],
+                        self.close[index],
+                        self.close[index],
+                        self.high[index],
+                    )
+                )
                 increase_x.append(self.x[index])
 
         increase_x = [[x, x, x, x, x, x] for x in increase_x]
@@ -265,12 +266,16 @@ class _Candlestick(object):
         decrease_x = []
         for index in range(len(self.open)):
             if self.close[index] <= self.open[index]:
-                decrease_y.append(self.low[index])
-                decrease_y.append(self.open[index])
-                decrease_y.append(self.close[index])
-                decrease_y.append(self.close[index])
-                decrease_y.append(self.close[index])
-                decrease_y.append(self.high[index])
+                decrease_y.extend(
+                    (
+                        self.low[index],
+                        self.open[index],
+                        self.close[index],
+                        self.close[index],
+                        self.close[index],
+                        self.high[index],
+                    )
+                )
                 decrease_x.append(self.x[index])
 
         decrease_x = [[x, x, x, x, x, x] for x in decrease_x]

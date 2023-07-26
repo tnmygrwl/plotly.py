@@ -6,9 +6,7 @@ from requests.compat import builtin_str, is_py2
 def _to_native_string(string, encoding):
     if isinstance(string, builtin_str):
         return string
-    if is_py2:
-        return string.encode(encoding)
-    return string.decode(encoding)
+    return string.encode(encoding) if is_py2 else string.decode(encoding)
 
 
 def to_native_utf8_string(string):
@@ -36,6 +34,4 @@ def basic_auth(username, password):
     if isinstance(password, str):
         password = password.encode("latin1")
 
-    return "Basic " + to_native_ascii_string(
-        b64encode(b":".join((username, password))).strip()
-    )
+    return f'Basic {to_native_ascii_string(b64encode(b":".join((username, password))).strip())}'

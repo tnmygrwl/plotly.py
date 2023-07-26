@@ -21,5 +21,5 @@ class UsersTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/users/current".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/users/current")
         self.assertNotIn("params", kwargs)

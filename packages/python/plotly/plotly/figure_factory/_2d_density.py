@@ -153,5 +153,4 @@ def create_2d_density(
         yaxis2=dict(domain=[0.85, 1], showgrid=False, zeroline=False),
     )
 
-    fig = graph_objs.Figure(data=data, layout=layout)
-    return fig
+    return graph_objs.Figure(data=data, layout=layout)

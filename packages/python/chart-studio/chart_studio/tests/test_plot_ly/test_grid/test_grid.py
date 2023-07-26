@@ -24,8 +24,7 @@ from chart_studio.tests.utils import PlotlyTestCase
 def random_filename():
     choice_chars = string.ascii_letters + string.digits
     random_chars = [random.choice(choice_chars) for _ in range(10)]
-    unique_filename = "Valid Grid " + "".join(random_chars)
-    return unique_filename
+    return "Valid Grid " + "".join(random_chars)
 
 
 class GridTest(PlotlyTestCase):
@@ -43,8 +42,7 @@ class GridTest(PlotlyTestCase):
     def get_grid(self):
         c1 = Column([1, 2, 3, 4], "first column")
         c2 = Column(["a", "b", "c", "d"], "second column")
-        g = Grid([c1, c2])
-        return g
+        return Grid([c1, c2])
 
     def upload_and_return_grid(self):
         g = self.get_grid()

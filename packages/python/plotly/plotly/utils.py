@@ -28,7 +28,7 @@ def _list_repr_elided(v, threshold=200, edgeitems=3, indent=0, width=80):
     elif isinstance(v, tuple):
         open_char, close_char = "(", ")"
     else:
-        raise ValueError("Invalid value of type: %s" % type(v))
+        raise ValueError(f"Invalid value of type: {type(v)}")
 
     if len(v) <= threshold:
         disp_v = v
@@ -37,7 +37,7 @@ def _list_repr_elided(v, threshold=200, edgeitems=3, indent=0, width=80):
 
     v_str = open_char + ", ".join([str(e) for e in disp_v]) + close_char
 
-    v_wrapped = "\n".join(
+    return "\n".join(
         textwrap.wrap(
             v_str,
             width=width,
@@ -45,7 +45,6 @@ def _list_repr_elided(v, threshold=200, edgeitems=3, indent=0, width=80):
             subsequent_indent=" " * (indent + 1),
         )
     ).strip()
-    return v_wrapped
 
 
 class ElidedWrapper(object):
@@ -75,11 +74,9 @@ class ElidedWrapper(object):
     def __repr__(self):
         numpy = get_module("numpy")
         if isinstance(self.v, (list, tuple)):
-            # Handle lists/tuples
-            res = _list_repr_elided(
+            return _list_repr_elided(
                 self.v, threshold=self.threshold, indent=self.indent
             )
-            return res
         elif numpy and isinstance(self.v, numpy.ndarray):
             # Handle numpy arrays
 
@@ -103,7 +100,7 @@ class ElidedWrapper(object):
         elif isinstance(self.v, str):
             # Handle strings
             if len(self.v) > 80:
-                return "(" + repr(self.v[:30]) + " ... " + repr(self.v[-30:]) + ")"
+                return f"({repr(self.v[:30])} ... {repr(self.v[-30:])})"
             else:
                 return self.v.__repr__()
         else:
@@ -120,14 +117,13 @@ class ElidedPrettyPrinter(PrettyPrinter):
         PrettyPrinter.__init__(self, *args, **kwargs)
 
     def _format(self, val, stream, indent, allowance, context, level):
-        if ElidedWrapper.is_wrappable(val):
-            elided_val = ElidedWrapper(val, self.threshold, indent)
-
-            return self._format(elided_val, stream, indent, allowance, context, level)
-        else:
+        if not ElidedWrapper.is_wrappable(val):
             return PrettyPrinter._format(
                 self, val, stream, indent, allowance, context, level
             )
+        elided_val = ElidedWrapper(val, self.threshold, indent)
+
+        return self._format(elided_val, stream, indent, allowance, context, level)
 
 
 def node_generator(node, path=()):
@@ -159,8 +155,7 @@ def node_generator(node, path=()):
     yield node, path
     for key, val in node.items():
         if isinstance(val, dict):
-            for item in node_generator(val, path + (key,)):
-                yield item
+            yield from node_generator(val, path + (key,))
 
 
 def get_by_path(obj, path):
@@ -189,12 +184,11 @@ def decode_unicode(coll):
         for no, entry in enumerate(coll):
             if isinstance(entry, (dict, list)):
                 coll[no] = decode_unicode(entry)
-            else:
-                if isinstance(entry, str):
-                    try:
-                        coll[no] = str(entry)
-                    except UnicodeEncodeError:
-                        pass
+            elif isinstance(entry, str):
+                try:
+                    coll[no] = str(entry)
+                except UnicodeEncodeError:
+                    pass
     elif isinstance(coll, dict):
         keys, vals = list(coll.keys()), list(coll.values())
         for key, val in zip(keys, vals):

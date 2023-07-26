@@ -16,9 +16,7 @@ from chart_studio.tests.utils import PlotlyTestCase
 @pytest.fixture
 def setup_image():
     py.sign_in("PlotlyImageTest", "786r5mecv0")
-    data = [{"x": [1, 2, 3], "y": [3, 1, 6]}]
-
-    return data
+    return [{"x": [1, 2, 3], "y": [3, 1, 6]}]
 
 
 @pytest.mark.parametrize("image_format", ("png", "jpeg", "pdf", "svg", "emf"))
@@ -52,7 +50,7 @@ def test_image_save_as_saves_valid_image(
     setup_image, image_format, width, height, scale
 ):
     data = setup_image
-    f, filename = tempfile.mkstemp(".{}".format(image_format))
+    f, filename = tempfile.mkstemp(f".{image_format}")
     py.image.save_as(
         data, filename, format=image_format, width=width, height=height, scale=scale,
     )

@@ -76,7 +76,7 @@ def sign_in(username, api_key, **kwargs):
     for key in kwargs:
         if key not in CREDENTIALS_KEYS and key not in CONFIG_KEYS:
             raise _plotly_utils.exceptions.PlotlyError(
-                "{} is not a valid config or credentials key".format(key)
+                f"{key} is not a valid config or credentials key"
             )
 
     # add credentials, raise error if type is wrong.
@@ -84,7 +84,7 @@ def sign_in(username, api_key, **kwargs):
         if key in kwargs:
             if not isinstance(kwargs[key], CREDENTIALS_KEYS[key]):
                 raise _plotly_utils.exceptions.PlotlyError(
-                    "{} must be of type '{}'".format(key, CREDENTIALS_KEYS[key])
+                    f"{key} must be of type '{CREDENTIALS_KEYS[key]}'"
                 )
             _session["credentials"][key] = kwargs[key]
 
@@ -93,7 +93,7 @@ def sign_in(username, api_key, **kwargs):
         if key in kwargs:
             if not isinstance(kwargs[key], CONFIG_KEYS[key]):
                 raise _plotly_utils.exceptions.PlotlyError(
-                    "{} must be of type '{}'".format(key, CONFIG_KEYS[key])
+                    f"{key} must be of type '{CONFIG_KEYS[key]}'"
                 )
             _session["config"][key] = kwargs.get(key)
 
@@ -102,7 +102,7 @@ def sign_in(username, api_key, **kwargs):
         if key in kwargs:
             if not isinstance(kwargs[key], CONFIG_KEYS[key]):
                 raise _plotly_utils.exceptions.PlotlyError(
-                    "{} must be of type '{}'".format(key, CONFIG_KEYS[key])
+                    f"{key} must be of type '{CONFIG_KEYS[key]}'"
                 )
             _session["plot_options"][key] = kwargs.get(key)
 
@@ -123,15 +123,15 @@ def update_session_plot_options(**kwargs):
     for key in kwargs:
         if key not in PLOT_OPTIONS:
             raise _plotly_utils.exceptions.PlotlyError(
-                "{} is not a valid config or plot option key".format(key)
+                f"{key} is not a valid config or plot option key"
             )
         if not isinstance(kwargs[key], PLOT_OPTIONS[key]):
             raise _plotly_utils.exceptions.PlotlyError(
-                "{} must be of type '{}'".format(key, PLOT_OPTIONS[key])
+                f"{key} must be of type '{PLOT_OPTIONS[key]}'"
             )
 
         # raise exception if sharing is invalid
-        if key == "sharing" and not (kwargs[key] in SHARING_OPTIONS):
+        if key == "sharing" and kwargs[key] not in SHARING_OPTIONS:
             raise _plotly_utils.exceptions.PlotlyError(
                 "'{0}' must be of either '{1}', '{2}'"
                 " or '{3}'".format(key, *SHARING_OPTIONS)

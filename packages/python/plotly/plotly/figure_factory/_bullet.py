@@ -77,7 +77,7 @@ def _bullet(
 
     # narrow domain if 1 bar
     if num_of_lanes <= 1:
-        fig["layout"][width_axis + "1"]["domain"] = [0.4, 0.6]
+        fig["layout"][f"{width_axis}1"]["domain"] = [0.4, 0.6]
 
     if not range_colors:
         range_colors = ["rgb(200, 200, 200)", "rgb(245, 245, 245)"]
@@ -109,8 +109,8 @@ def _bullet(
                 orientation=orientation,
                 width=2,
                 base=0,
-                xaxis="x{}".format(row + 1),
-                yaxis="y{}".format(row + 1),
+                xaxis=f"x{row + 1}",
+                yaxis=f"y{row + 1}",
             )
             fig.add_trace(bar)
 
@@ -141,8 +141,8 @@ def _bullet(
                 orientation=orientation,
                 width=0.4,
                 base=0,
-                xaxis="x{}".format(row + 1),
-                yaxis="y{}".format(row + 1),
+                xaxis=f"x{row + 1}",
+                yaxis=f"y{row + 1}",
             )
             fig.add_trace(bar)
 
@@ -154,27 +154,24 @@ def _bullet(
             y=y,
             name="markers",
             hoverinfo="x" if orientation == "h" else "y",
-            xaxis="x{}".format(row + 1),
-            yaxis="y{}".format(row + 1),
-            **scatter_options
+            xaxis=f"x{row + 1}",
+            yaxis=f"y{row + 1}",
+            **scatter_options,
         )
 
         fig.add_trace(markers)
 
         # titles and subtitles
         title = df.iloc[row]["titles"]
-        if "subtitles" in df:
-            subtitle = "<br>{}".format(df.iloc[row]["subtitles"])
-        else:
-            subtitle = ""
-        label = "<b>{}</b>".format(title) + subtitle
+        subtitle = f'<br>{df.iloc[row]["subtitles"]}' if "subtitles" in df else ""
+        label = f"<b>{title}</b>{subtitle}"
         annot = utils.annotation_dict_for_label(
             label,
-            (num_of_lanes - row if orientation == "h" else row + 1),
+            num_of_lanes - row if orientation == "h" else row + 1,
             num_of_lanes,
             vertical_spacing if orientation == "h" else horizontal_spacing,
             "row" if orientation == "h" else "col",
-            True if orientation == "h" else False,
+            orientation == "h",
             False,
         )
         fig["layout"]["annotations"] += (annot,)
@@ -350,7 +347,7 @@ def create_bullet(
             if k not in scatter_options["marker"]:
                 scatter_options["marker"][k] = default_scatter["marker"][k]
 
-    fig = _bullet(
+    return _bullet(
         df,
         markers,
         measures,
@@ -365,5 +362,3 @@ def create_bullet(
         scatter_options,
         layout_options,
     )
-
-    return fig

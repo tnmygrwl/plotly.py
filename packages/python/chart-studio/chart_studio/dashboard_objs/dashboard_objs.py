@@ -29,19 +29,17 @@ ID_NOT_VALID_MESSAGE = (
 
 
 def _empty_box():
-    empty_box = {"type": "box", "boxType": "empty"}
-    return empty_box
+    return {"type": "box", "boxType": "empty"}
 
 
 def _box(fileId="", shareKey=None, title=""):
-    box = {
+    return {
         "type": "box",
         "boxType": "plot",
         "fileId": fileId,
         "shareKey": shareKey,
         "title": title,
     }
-    return box
 
 
 def _container(box_1=None, box_2=None, size=50, sizeUnit="%", direction="vertical"):
@@ -50,7 +48,7 @@ def _container(box_1=None, box_2=None, size=50, sizeUnit="%", direction="vertica
     if box_2 is None:
         box_2 = _empty_box()
 
-    container = {
+    return {
         "type": "split",
         "size": size,
         "sizeUnit": sizeUnit,
@@ -58,8 +56,6 @@ def _container(box_1=None, box_2=None, size=50, sizeUnit="%", direction="vertica
         "first": box_1,
         "second": box_2,
     }
-
-    return container
 
 
 dashboard_html = """
@@ -295,10 +291,7 @@ class Dashboard(dict):
         all_nodes = list(node_generator(self["layout"]))
         all_nodes.sort(key=lambda x: x[1])
 
-        # remove path 'second' as it's always an empty box
-        all_paths = []
-        for node in all_nodes:
-            all_paths.append(node[1])
+        all_paths = [node[1] for node in all_nodes]
         path_second = ("second",)
         if path_second in all_paths:
             all_paths.remove(path_second)
@@ -412,10 +405,10 @@ class Dashboard(dict):
                         fill_percent=fill_percent,
                     )
 
+                    new_top_left_x = top_left_x
+                    new_top_left_y = top_left_y
                     # determine the specs for resulting two box split
                     if is_horizontal:
-                        new_top_left_x = top_left_x
-                        new_top_left_y = top_left_y
                         new_box_w = box_w * (fill_percent / 100.0)
                         new_box_h = box_h
 
@@ -424,8 +417,6 @@ class Dashboard(dict):
                         new_box_w_2 = box_w * ((100 - fill_percent) / 100.0)
                         new_box_h_2 = box_h
                     else:
-                        new_top_left_x = top_left_x
-                        new_top_left_y = top_left_y
                         new_box_w = box_w
                         new_box_h = box_h * (fill_percent / 100.0)
 

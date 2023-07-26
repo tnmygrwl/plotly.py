@@ -24,21 +24,19 @@ class MakeParamsTest(PlotlyApiTestCase):
 class BuildUrlTest(PlotlyApiTestCase):
     def test_build_url(self):
         url = utils.build_url("cats")
-        self.assertEqual(url, "{}/v2/cats".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/cats")
 
     def test_build_url_id(self):
         url = utils.build_url("cats", id="MsKitty")
-        self.assertEqual(url, "{}/v2/cats/MsKitty".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/cats/MsKitty")
 
     def test_build_url_route(self):
         url = utils.build_url("cats", route="about")
-        self.assertEqual(url, "{}/v2/cats/about".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/cats/about")
 
     def test_build_url_id_route(self):
         url = utils.build_url("cats", id="MsKitty", route="de-claw")
-        self.assertEqual(
-            url, "{}/v2/cats/MsKitty/de-claw".format(self.plotly_api_domain)
-        )
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/cats/MsKitty/de-claw")
 
 
 class ValidateResponseTest(PlotlyApiTestCase):
@@ -157,7 +155,7 @@ class GetHeadersTest(PlotlyApiTestCase):
     def test_normal_auth(self):
         headers = utils.get_headers()
         expected_headers = {
-            "plotly-client-platform": "python {}".format(version.stable_semver()),
+            "plotly-client-platform": f"python {version.stable_semver()}",
             "authorization": "Basic Zm9vOmJhcg==",
             "content-type": "application/json",
         }
@@ -167,7 +165,7 @@ class GetHeadersTest(PlotlyApiTestCase):
         sign_in(self.username, self.api_key, plotly_proxy_authorization=True)
         headers = utils.get_headers()
         expected_headers = {
-            "plotly-client-platform": "python {}".format(version.stable_semver()),
+            "plotly-client-platform": f"python {version.stable_semver()}",
             "authorization": "Basic Y25ldDpob29wbGE=",
             "plotly-authorization": "Basic Zm9vOmJhcg==",
             "content-type": "application/json",

@@ -268,7 +268,7 @@ class BaseFigure(object):
             if k in self:
                 self[k] = v
             elif not skip_invalid:
-                raise TypeError("invalid Figure property: {}".format(k))
+                raise TypeError(f"invalid Figure property: {k}")
 
     # Magic Methods
     # -------------
@@ -408,16 +408,12 @@ class BaseFigure(object):
         """
         props = self.to_plotly_json()
 
-        # Elide template
-        template_props = props.get("layout", {}).get("template", {})
-        if template_props:
+        if template_props := props.get("layout", {}).get("template", {}):
             props["layout"]["template"] = "..."
 
-        repr_str = BasePlotlyType._build_repr_for_class(
+        return BasePlotlyType._build_repr_for_class(
             props=props, class_name=self.__class__.__name__
         )
-
-        return repr_str
 
     def _repr_html_(self):
         """
@@ -447,7 +443,7 @@ class BaseFigure(object):
         bundle = {}
         for renderer in renderers_list:
             if isinstance(renderer, MimetypeRenderer):
-                bundle.update(renderer.to_mimebundle(fig_dict))
+                bundle |= renderer.to_mimebundle(fig_dict)
         return bundle
 
     def _ipython_display_(self):
@@ -614,17 +610,17 @@ class BaseFigure(object):
         orig_uids = [id(trace) for trace in self.data]
         new_uids = [id(trace) for trace in new_data]
 
-        invalid_uids = set(new_uids).difference(set(orig_uids))
-        if invalid_uids:
+        if invalid_uids := set(new_uids).difference(set(orig_uids)):
             err_msg = err_header
 
             raise ValueError(err_msg)
 
         # ### Check for duplicates in assignment ###
         uid_counter = collections.Counter(new_uids)
-        duplicate_uids = [uid for uid, count in uid_counter.items() if count > 1]
-        if duplicate_uids:
-            err_msg = err_header + "    Received duplicated traces"
+        if duplicate_uids := [
+            uid for uid, count in uid_counter.items() if count > 1
+        ]:
+            err_msg = f"{err_header}    Received duplicated traces"
 
             raise ValueError(err_msg)
 
@@ -645,8 +641,8 @@ class BaseFigure(object):
                 old_trace._trace_ind = None
 
         # ### Compute trace props / defaults after removal ###
-        traces_props_post_removal = [t for t in self._data]
-        traces_prop_defaults_post_removal = [t for t in self._data_defaults]
+        traces_props_post_removal = list(self._data)
+        traces_prop_defaults_post_removal = list(self._data_defaults)
         uids_post_removal = [id(trace_data) for trace_data in self.data]
 
         for i in reversed(delete_inds):
@@ -661,19 +657,12 @@ class BaseFigure(object):
             # Update widget, if any
             self._send_deleteTraces_msg(delete_inds)
 
-        # Move traces
-        # -----------
-
-        # ### Compute new index for each remaining trace ###
-        new_inds = []
-        for uid in uids_post_removal:
-            new_inds.append(new_uids.index(uid))
-
+        new_inds = [new_uids.index(uid) for uid in uids_post_removal]
         # ### Compute current index for each remaining trace ###
         current_inds = list(range(len(traces_props_post_removal)))
 
         # ### Check whether a move is needed ###
-        if not all([i1 == i2 for i1, i2 in zip(new_inds, current_inds)]):
+        if any(i1 != i2 for i1, i2 in zip(new_inds, current_inds)):
 
             # #### Save off index lists for moveTraces message ####
             msg_current_inds = current_inds
@@ -684,7 +673,7 @@ class BaseFigure(object):
             # serialization for the FigureWidget case
             # ##### Remove by curr_inds in reverse order #####
             moving_traces_data = []
-            for ci in reversed(current_inds):
+            for ci in reversed(msg_current_inds):
                 # Push moving traces data to front of list
                 moving_traces_data.insert(0, self._data[ci])
                 del self._data[ci]
@@ -765,7 +754,7 @@ class BaseFigure(object):
             elif col is None and row is not None:
                 # All columns for row
                 grid_subplot_ref_tuples = grid_ref[row - 1]
-            elif col is not None and row is not None:
+            elif col is not None:
                 # Single grid cell
                 grid_subplot_ref_tuples = [grid_ref[row - 1][col - 1]]
             else:
@@ -1118,10 +1107,7 @@ is of type {subplot_type}.""".format(
 Cannot add {prop_singular} to secondary y-axis of subplot at position ({r}, {c})
 because subplot does not have a secondary y-axis"""
                 )
-            if secondary_y:
-                xaxis, yaxis = refs[1].layout_keys
-            else:
-                xaxis, yaxis = refs[0].layout_keys
+            xaxis, yaxis = refs[1].layout_keys if secondary_y else refs[0].layout_keys
             xref, yref = xaxis.replace("axis", ""), yaxis.replace("axis", "")
             new_obj.update(xref=xref, yref=yref)
 
@@ -1183,10 +1169,9 @@ because subplot does not have a secondary y-axis"""
         # they need to apply the restyle operation on themselves.
         source_view_id = kwargs.get("source_view_id", None)
 
-        # Perform restyle on trace dicts
-        # ------------------------------
-        restyle_changes = self._perform_plotly_restyle(restyle_data, trace_indexes)
-        if restyle_changes:
+        if restyle_changes := self._perform_plotly_restyle(
+            restyle_data, trace_indexes
+        ):
             # The restyle operation resulted in a change to some trace
             # properties, so we dispatch change callbacks and send the
             # restyle message to the frontend (if any)
@@ -1369,8 +1354,7 @@ Invalid property path '{key_path_str}' for trace class {trace_class}
             # e.g. ['foo', 'bar_baz[1]'] -> ['foo', 'bar_baz', '1']
             key_path2 = []
             for key in key_path:
-                match = BaseFigure._bracket_re.match(key)
-                if match:
+                if match := BaseFigure._bracket_re.match(key):
                     key_path2.extend(match.groups())
                 else:
                     key_path2.append(key)
@@ -1458,11 +1442,7 @@ Invalid property path '{key_path_str}' for trace class {trace_class}
                     val_parent.append(None)
 
             elif isinstance(val_parent, dict) and key_path_el not in val_parent:
-                if isinstance(key_path[kp + 1], int):
-                    val_parent[key_path_el] = []
-                else:
-                    val_parent[key_path_el] = {}
-
+                val_parent[key_path_el] = [] if isinstance(key_path[kp + 1], int) else {}
             val_parent = val_parent[key_path_el]
 
         # Assign value to to final parent dict or list
@@ -1479,9 +1459,6 @@ Invalid property path '{key_path_str}' for trace class {trace_class}
         if v is Undefined:
             pass
 
-        # v is None
-        # ---------
-        # Check whether we can remove key from parent
         elif v is None:
             if isinstance(val_parent, dict):
                 if last_key in val_parent:
@@ -1503,38 +1480,34 @@ Invalid property path '{key_path_str}' for trace class {trace_class}
                         typ=type(val_parent), raw_key=key_path_str
                     )
                 )
-        # v is a valid value
-        # ------------------
-        # Check whether parent should be updated
-        else:
-            if isinstance(val_parent, dict):
-                if last_key not in val_parent or not BasePlotlyType._vals_equal(
-                    val_parent[last_key], v
-                ):
-                    # Parent is a dict and does not already contain the
-                    # value v at key last_key
+        elif isinstance(val_parent, dict):
+            if last_key not in val_parent or not BasePlotlyType._vals_equal(
+                val_parent[last_key], v
+            ):
+                # Parent is a dict and does not already contain the
+                # value v at key last_key
+                val_parent[last_key] = v
+                val_changed = True
+        elif isinstance(val_parent, list):
+            if isinstance(last_key, int):
+                # Extend list with Nones if needed so that last_key is
+                # in bounds
+                while len(val_parent) <= last_key:
+                    val_parent.append(None)
+
+                if not BasePlotlyType._vals_equal(val_parent[last_key], v):
+                    # Parent is a list and does not already contain the
+                    # value v at index last_key
                     val_parent[last_key] = v
                     val_changed = True
-            elif isinstance(val_parent, list):
-                if isinstance(last_key, int):
-                    # Extend list with Nones if needed so that last_key is
-                    # in bounds
-                    while len(val_parent) <= last_key:
-                        val_parent.append(None)
-
-                    if not BasePlotlyType._vals_equal(val_parent[last_key], v):
-                        # Parent is a list and does not already contain the
-                        # value v at index last_key
-                        val_parent[last_key] = v
-                        val_changed = True
-            else:
-                # Unsupported parent type (numpy array for example)
-                raise ValueError(
-                    """
+        else:
+            # Unsupported parent type (numpy array for example)
+            raise ValueError(
+                """
     Cannot set element of type {typ} at location {raw_key}""".format(
-                        typ=type(val_parent), raw_key=key_path_str
-                    )
+                    typ=type(val_parent), raw_key=key_path_str
                 )
+            )
         return val_changed
 
     # Add traces
@@ -1927,15 +1900,11 @@ Please use the add_trace method with the row and col parameters.
             trace_index = child._trace_ind
             return self._data[trace_index]
 
-        # Child is the layout
-        # -------------------
         elif child is self.layout:
             return self._layout
 
-        # Unknown child
-        # -------------
         else:
-            raise ValueError("Unrecognized child: %s" % child)
+            raise ValueError(f"Unrecognized child: {child}")
 
     def _get_child_prop_defaults(self, child):
         """
@@ -1958,15 +1927,11 @@ Please use the add_trace method with the row and col parameters.
             trace_index = child._trace_ind
             return self._data_defaults[trace_index]
 
-        # Child is the layout
-        # -------------------
         elif child is self.layout:
             return self._layout_defaults
 
-        # Unknown child
-        # -------------
         else:
-            raise ValueError("Unrecognized child: %s" % child)
+            raise ValueError(f"Unrecognized child: {child}")
 
     def _init_child_props(self, child):
         """
@@ -1992,19 +1957,17 @@ Please use the add_trace method with the row and col parameters.
     def _initialize_layout_template(self):
         import plotly.io as pio
 
-        if self._layout_obj._props.get("template", None) is None:
-            if pio.templates.default is not None:
+        if pio.templates.default is not None:
+            if self._layout_obj._props.get("template", None) is None:
                 # Assume default template is already validated
                 if self._allow_disable_validation:
                     self._layout_obj._validate = False
                 try:
-                    if isinstance(pio.templates.default, BasePlotlyType):
-                        # Template object. Don't want to actually import `Template`
-                        # here for performance so we check against `BasePlotlyType`
-                        template_object = pio.templates.default
-                    else:
-                        # Name of registered template object
-                        template_object = pio.templates[pio.templates.default]
+                    template_object = (
+                        pio.templates.default
+                        if isinstance(pio.templates.default, BasePlotlyType)
+                        else pio.templates[pio.templates.default]
+                    )
                     self._layout_obj.template = template_object
                 finally:
                     self._layout_obj._validate = self._validate
@@ -2082,10 +2045,7 @@ Please use the add_trace method with the row and col parameters.
         else:
             msg_kwargs = {}
 
-        # Perform relayout operation on layout dict
-        # -----------------------------------------
-        relayout_changes = self._perform_plotly_relayout(relayout_data)
-        if relayout_changes:
+        if relayout_changes := self._perform_plotly_relayout(relayout_data):
             # The relayout operation resulted in a change to some layout
             # properties, so we dispatch change callbacks and send the
             # relayout message to the frontend (if any)
@@ -2128,10 +2088,7 @@ Invalid property path '{key_path_str}' for layout
                     )
                 )
 
-            # Apply set operation on the layout dict
-            val_changed = BaseFigure._set_in(self._layout, key_path_str, v)
-
-            if val_changed:
+            if val_changed := BaseFigure._set_in(self._layout, key_path_str, v):
                 relayout_changes[key_path_str] = v
 
         return relayout_changes
@@ -2247,8 +2204,7 @@ Invalid property path '{key_path_str}' for layout
             key_path_so_far = ()
             keys_left = key_path
 
-            # Iterate down the key path
-            for next_key in key_path:
+            for next_key in keys_left:
                 if key_path_so_far not in dispatch_plan:
                     dispatch_plan[key_path_so_far] = set()
 
@@ -2560,16 +2516,14 @@ Invalid property path '{key_path_str}' for layout
         # Handle Style / Trace Indexes
         # ----------------------------
         batch_style_commands = self._batch_trace_edits
-        trace_indexes = sorted(set([trace_ind for trace_ind in batch_style_commands]))
+        trace_indexes = sorted(set(list(batch_style_commands)))
 
         all_props = sorted(
-            set(
-                [
-                    prop
-                    for trace_style in self._batch_trace_edits.values()
-                    for prop in trace_style
-                ]
-            )
+            {
+                prop
+                for trace_style in self._batch_trace_edits.values()
+                for prop in trace_style
+            }
         )
 
         # Initialize restyle_data dict with all values undefined
@@ -2782,8 +2736,7 @@ Invalid property path '{key_path_str}' for layout
         # -------------
         # Frame key is only added if there are any frames
         res = {"data": data, "layout": layout}
-        frames = deepcopy([frame._props for frame in self._frame_objs])
-        if frames:
+        if frames := deepcopy([frame._props for frame in self._frame_objs]):
             res["frames"] = frames
 
         return res
@@ -3323,8 +3276,7 @@ Invalid property path '{key_path_str}' for layout
             if isinstance(plotly_obj, BaseLayoutType):
                 for key in update_obj:
                     if key not in plotly_obj:
-                        match = plotly_obj._subplot_re_match(key)
-                        if match:
+                        if match := plotly_obj._subplot_re_match(key):
                             # We need to create a subplotid object
                             plotly_obj[key] = {}
 
@@ -3383,16 +3335,15 @@ Invalid property path '{key_path_str}' for layout
             if len(update_obj) == 0:
                 # Nothing to do
                 return
-            else:
-                for i, plotly_element in enumerate(plotly_obj):
-                    if isinstance(update_obj, dict):
-                        if i in update_obj:
-                            update_element = update_obj[i]
-                        else:
-                            continue
+            for i, plotly_element in enumerate(plotly_obj):
+                if isinstance(update_obj, dict):
+                    if i in update_obj:
+                        update_element = update_obj[i]
                     else:
-                        update_element = update_obj[i % len(update_obj)]
-                    BaseFigure._perform_update(plotly_element, update_element)
+                        continue
+                else:
+                    update_element = update_obj[i % len(update_obj)]
+                BaseFigure._perform_update(plotly_element, update_element)
         else:
             raise ValueError(
                 "Unexpected plotly object with type {typ}".format(typ=type(plotly_obj))
@@ -3405,11 +3356,12 @@ Invalid property path '{key_path_str}' for layout
         (not object equality as is the case for list.index)
 
         """
-        index_list = [i for i, curr_val in enumerate(iterable) if curr_val is val]
-        if not index_list:
+        if index_list := [
+            i for i, curr_val in enumerate(iterable) if curr_val is val
+        ]:
+            return index_list[0]
+        else:
             raise ValueError("Invalid value")
-
-        return index_list[0]
 
 
 class BasePlotlyType(object):
@@ -3536,11 +3488,8 @@ class BasePlotlyType(object):
         """
         invalid_kwargs = {}
         for k, v in kwargs.items():
-            if k in self:
+            if k in self or not self._validate:
                 # e.g. underscore kwargs like marker_line_color
-                self[k] = v
-            elif not self._validate:
-                # Set extra property as-is
                 self[k] = v
             else:
                 invalid_kwargs[k] = v
@@ -3610,36 +3559,31 @@ class BasePlotlyType(object):
             # If this node's properties are uninitialized then so are its
             # child's
             return None
-        else:
-            # ### Child a compound property ###
-            if child.plotly_name in self:
-                from _plotly_utils.basevalidators import (
-                    CompoundValidator,
-                    CompoundArrayValidator,
-                )
+        if child.plotly_name not in self:
+            raise ValueError(f"Invalid child with name: {child.plotly_name}")
+        from _plotly_utils.basevalidators import (
+            CompoundValidator,
+            CompoundArrayValidator,
+        )
 
-                validator = self._get_validator(child.plotly_name)
+        validator = self._get_validator(child.plotly_name)
 
-                if isinstance(validator, CompoundValidator):
-                    return self._props.get(child.plotly_name, None)
+        if isinstance(validator, CompoundValidator):
+            return self._props.get(child.plotly_name, None)
 
-                # ### Child an element of a compound array property ###
-                elif isinstance(validator, CompoundArrayValidator):
-                    children = self[child.plotly_name]
-                    child_ind = BaseFigure._index_is(children, child)
-                    assert child_ind is not None
+        # ### Child an element of a compound array property ###
+        elif isinstance(validator, CompoundArrayValidator):
+            children = self[child.plotly_name]
+            child_ind = BaseFigure._index_is(children, child)
+            assert child_ind is not None
 
-                    children_props = self._props.get(child.plotly_name, None)
-                    return (
-                        children_props[child_ind]
-                        if children_props is not None
-                        and len(children_props) > child_ind
-                        else None
-                    )
-
-            # ### Invalid child ###
-            else:
-                raise ValueError("Invalid child with name: %s" % child.plotly_name)
+            children_props = self._props.get(child.plotly_name, None)
+            return (
+                children_props[child_ind]
+                if children_props is not None
+                and len(children_props) > child_ind
+                else None
+            )
 
     def _init_props(self):
         """
@@ -3652,9 +3596,7 @@ class BasePlotlyType(object):
         None
         """
         # Ensure that _data is initialized.
-        if self._props is not None:
-            pass
-        else:
+        if self._props is None:
             self._parent._init_child_props(self)
 
     def _init_child_props(self, child):
@@ -3679,8 +3621,6 @@ class BasePlotlyType(object):
             if child.plotly_name not in self._props:
                 self._props[child.plotly_name] = {}
 
-        # Child an element of a compound array property
-        # ---------------------------------------------
         elif child.plotly_name in self._compound_array_props:
             children = self._compound_array_props[child.plotly_name]
             child_ind = BaseFigure._index_is(children, child)
@@ -3695,10 +3635,8 @@ class BasePlotlyType(object):
             while len(children_list) <= child_ind:
                 children_list.append({})
 
-        # Invalid child
-        # -------------
         else:
-            raise ValueError("Invalid child with name: %s" % child.plotly_name)
+            raise ValueError(f"Invalid child with name: {child.plotly_name}")
 
     def _get_child_prop_defaults(self, child):
         """
@@ -3716,29 +3654,26 @@ class BasePlotlyType(object):
             # If this node's default properties are uninitialized then so are
             # its child's
             return None
-        else:
             # ### Child a compound property ###
-            if child.plotly_name in self._compound_props:
-                return self._prop_defaults.get(child.plotly_name, None)
+        if child.plotly_name in self._compound_props:
+            return self._prop_defaults.get(child.plotly_name, None)
 
-            # ### Child an element of a compound array property ###
-            elif child.plotly_name in self._compound_array_props:
-                children = self._compound_array_props[child.plotly_name]
-                child_ind = BaseFigure._index_is(children, child)
+        elif child.plotly_name in self._compound_array_props:
+            children = self._compound_array_props[child.plotly_name]
+            child_ind = BaseFigure._index_is(children, child)
 
-                assert child_ind is not None
+            assert child_ind is not None
 
-                children_props = self._prop_defaults.get(child.plotly_name, None)
+            children_props = self._prop_defaults.get(child.plotly_name, None)
 
-                return (
-                    children_props[child_ind]
-                    if children_props is not None and len(children_props) > child_ind
-                    else None
-                )
+            return (
+                children_props[child_ind]
+                if children_props is not None and len(children_props) > child_ind
+                else None
+            )
 
-            # ### Invalid child ###
-            else:
-                raise ValueError("Invalid child with name: %s" % child.plotly_name)
+        else:
+            raise ValueError(f"Invalid child with name: {child.plotly_name}")
 
     @property
     def _prop_defaults(self):
@@ -3772,13 +3707,10 @@ class BasePlotlyType(object):
         # ----------------
         if prop in self._mapped_properties:
             prop_path = self._mapped_properties[prop]
-            plotly_obj = self[prop_path[:-1]]
-            prop = prop_path[-1]
         else:
             prop_path = BaseFigure._str_to_dict_path(prop)
-            plotly_obj = self[prop_path[:-1]]
-            prop = prop_path[-1]
-
+        plotly_obj = self[prop_path[:-1]]
+        prop = prop_path[-1]
         # Return validator
         # ----------------
         return plotly_obj._get_validator(prop)
@@ -3945,11 +3877,10 @@ class BasePlotlyType(object):
                     obj = obj[p]
                 else:
                     return False
+            elif obj is not None and p in obj._valid_props:
+                obj = obj[p]
             else:
-                if obj is not None and p in obj._valid_props:
-                    obj = obj[p]
-                else:
-                    return False
+                return False
 
         return True
 
@@ -4079,8 +4010,7 @@ class BasePlotlyType(object):
         Return an iterator over the object's properties
         """
         res = list(self._valid_props)
-        for prop in self._mapped_properties:
-            res.append(prop)
+        res.extend(iter(self._mapped_properties))
         return iter(res)
 
     def __eq__(self, other):
@@ -4134,21 +4064,18 @@ class BasePlotlyType(object):
         from plotly.utils import ElidedPrettyPrinter
 
         if parent_path_str:
-            class_name = parent_path_str + "." + class_name
+            class_name = f"{parent_path_str}.{class_name}"
 
         if len(props) == 0:
-            repr_str = class_name + "()"
-        else:
-            pprinter = ElidedPrettyPrinter(threshold=200, width=120)
-            pprint_res = pprinter.pformat(props)
+            return f"{class_name}()"
+        pprinter = ElidedPrettyPrinter(threshold=200, width=120)
+        pprint_res = pprinter.pformat(props)
 
-            # pprint_res is indented by 1 space. Add extra 3 spaces for PEP8
-            # complaint indent
-            body = "   " + pprint_res[1:-1].replace("\n", "\n   ")
+        # pprint_res is indented by 1 space. Add extra 3 spaces for PEP8
+        # complaint indent
+        body = "   " + pprint_res[1:-1].replace("\n", "\n   ")
 
-            repr_str = class_name + "({\n " + body + "\n})"
-
-        return repr_str
+        return class_name + "({\n " + body + "\n})"
 
     def __repr__(self):
         """
@@ -4172,14 +4099,11 @@ class BasePlotlyType(object):
         if "template" in props:
             props["template"] = "..."
 
-        # Build repr string
-        repr_str = BasePlotlyType._build_repr_for_class(
+        return BasePlotlyType._build_repr_for_class(
             props=props,
             class_name=self.__class__.__name__,
             parent_path_str=self._parent_path_str,
         )
-
-        return repr_str
 
     def _raise_on_invalid_property_error(self, *args):
         """
@@ -4197,8 +4121,7 @@ class BasePlotlyType(object):
         ValueError
             Always
         """
-        invalid_props = args
-        if invalid_props:
+        if invalid_props := args:
             if len(invalid_props) == 1:
                 prop_str = "property"
                 invalid_str = repr(invalid_props[0])
@@ -4398,26 +4321,15 @@ class BasePlotlyType(object):
         # Save deep copies of current and new states
         # ------------------------------------------
         curr_val = self._compound_props.get(prop, None)
-        if curr_val is not None:
-            curr_dict_val = deepcopy(curr_val._props)
-        else:
-            curr_dict_val = None
-
-        if val is not None:
-            new_dict_val = deepcopy(val._props)
-        else:
-            new_dict_val = None
-
-        # Update _props dict
-        # ------------------
+        curr_dict_val = deepcopy(curr_val._props) if curr_val is not None else None
+        new_dict_val = deepcopy(val._props) if val is not None else None
         if not self._in_batch_mode:
-            if not new_dict_val:
-                if self._props and prop in self._props:
-                    self._props.pop(prop)
-            else:
+            if new_dict_val:
                 self._init_props()
                 self._props[prop] = new_dict_val
 
+            elif self._props and prop in self._props:
+                self._props.pop(prop)
         # Send update if there was a change in value
         # ------------------------------------------
         if not BasePlotlyType._vals_equal(curr_dict_val, new_dict_val):
@@ -4477,21 +4389,14 @@ class BasePlotlyType(object):
         else:
             curr_dict_vals = None
 
-        if val is not None:
-            new_dict_vals = [deepcopy(nv._props) for nv in val]
-        else:
-            new_dict_vals = None
-
-        # Update _props dict
-        # ------------------
+        new_dict_vals = None if val is None else [deepcopy(nv._props) for nv in val]
         if not self._in_batch_mode:
-            if not new_dict_vals:
-                if self._props and prop in self._props:
-                    self._props.pop(prop)
-            else:
+            if new_dict_vals:
                 self._init_props()
                 self._props[prop] = new_dict_vals
 
+            elif self._props and prop in self._props:
+                self._props.pop(prop)
         # Send update if there was a change in value
         # ------------------------------------------
         if not BasePlotlyType._vals_equal(curr_dict_vals, new_dict_vals):
@@ -4612,10 +4517,7 @@ class BasePlotlyType(object):
         # Loop over registered callbacks
         # ------------------------------
         for prop_path_tuples, callbacks in self._change_callbacks.items():
-            # ### Compute callback paths that changed ###
-            common_paths = changed_paths.intersection(set(prop_path_tuples))
-            if common_paths:
-
+            if common_paths := changed_paths.intersection(set(prop_path_tuples)):
                 # #### Invoke callback ####
                 callback_args = [self[cb_path] for cb_path in prop_path_tuples]
 
@@ -4685,14 +4587,11 @@ on_change callbacks are not supported in this case.
 
         # Validate args not empty
         # -----------------------
-        if len(args) == 0:
+        if not args:
             raise ValueError("At least one change property must be specified")
 
-        # Validate args
-        # -------------
-        invalid_args = [arg for arg in args if arg not in self]
-        if invalid_args:
-            raise ValueError("Invalid property specification(s): %s" % invalid_args)
+        if invalid_args := [arg for arg in args if arg not in self]:
+            raise ValueError(f"Invalid property specification(s): {invalid_args}")
 
         # Process append option
         # ---------------------
@@ -4700,7 +4599,7 @@ on_change callbacks are not supported in this case.
 
         # Normalize args to path tuples
         # -----------------------------
-        arg_tuples = tuple([BaseFigure._str_to_dict_path(a) for a in args])
+        arg_tuples = tuple(BaseFigure._str_to_dict_path(a) for a in args)
 
         # Initialize callbacks list
         # -------------------------
@@ -4927,12 +4826,7 @@ class BaseLayoutType(BaseLayoutHierarchyType):
             # Unwrap to scalar string
             prop = prop_tuple[0]
 
-        # Handle subplot suffix digit of 1
-        # --------------------------------
-        # Remove digit of 1 from subplot id (e.g.. xaxis1 -> xaxis)
-        match = self._subplot_re_match(prop)
-
-        if match:
+        if match := self._subplot_re_match(prop):
             subplot_prop = match.group(1)
             suffix_digit = int(match.group(2))
             if subplot_prop and suffix_digit == 1:
@@ -4952,11 +4846,10 @@ class BaseLayoutType(BaseLayoutHierarchyType):
         Custom __getattr__ that handles dynamic subplot properties
         """
         prop = self._strip_subplot_suffix_of_1(prop)
-        if prop != "_subplotid_props" and prop in self._subplotid_props:
-            validator = self._get_validator(prop)
-            return validator.present(self._compound_props[prop])
-        else:
+        if prop == "_subplotid_props" or prop not in self._subplotid_props:
             return super(BaseLayoutHierarchyType, self).__getattribute__(prop)
+        validator = self._get_validator(prop)
+        return validator.present(self._compound_props[prop])
 
     def __getitem__(self, prop):
         """
@@ -5016,42 +4909,39 @@ class BaseLayoutType(BaseLayoutHierarchyType):
         Custom __dir__ that handles dynamic subplot properties
         """
         # Include any active subplot values
-        if six.PY2:
-
-            def get_attrs(obj):
-                import types
-
-                if not hasattr(obj, "__dict__"):
-                    return []
-                if not isinstance(obj.__dict__, (dict, types.DictProxyType)):
-                    raise TypeError("%s.__dict__ is not a dictionary" "" % obj.__name__)
-                return obj.__dict__.keys()
-
-            def dir2(obj):
-                attrs = set()
-                if not hasattr(obj, "__bases__"):
-                    # obj is an instance
-                    if not hasattr(obj, "__class__"):
-                        # slots
-                        return sorted(get_attrs(obj))
-                    klass = obj.__class__
-                    attrs.update(get_attrs(klass))
-                else:
-                    # obj is a class
-                    klass = obj
-
-                for cls in klass.__bases__:
-                    attrs.update(get_attrs(cls))
-                    attrs.update(dir2(cls))
-                attrs.update(get_attrs(obj))
-                return list(attrs)
-
-            return dir2(self) + sorted(self._subplotid_props)
-        else:
-
+        if not six.PY2:
             return list(super(BaseLayoutHierarchyType, self).__dir__()) + sorted(
                 self._subplotid_props
             )
+        def get_attrs(obj):
+            import types
+
+            if not hasattr(obj, "__dict__"):
+                return []
+            if not isinstance(obj.__dict__, (dict, types.DictProxyType)):
+                raise TypeError(f"{obj.__name__}.__dict__ is not a dictionary")
+            return obj.__dict__.keys()
+
+        def dir2(obj):
+            attrs = set()
+            if not hasattr(obj, "__bases__"):
+                # obj is an instance
+                if not hasattr(obj, "__class__"):
+                    # slots
+                    return sorted(get_attrs(obj))
+                klass = obj.__class__
+                attrs.update(get_attrs(klass))
+            else:
+                # obj is a class
+                klass = obj
+
+            for cls in klass.__bases__:
+                attrs.update(get_attrs(cls))
+                attrs.update(dir2(cls))
+            attrs.update(get_attrs(obj))
+            return list(attrs)
+
+        return dir2(self) + sorted(self._subplotid_props)
 
 
 class BaseTraceHierarchyType(BasePlotlyType):
@@ -5479,17 +5369,9 @@ class BaseFrameHierarchyType(BasePlotlyType):
         # Child is a trace
         # ----------------
         if trace_index is not None:
-            if "data" in self._props:
-                return self._props["data"][trace_index]
-            else:
-                return None
-
-        # Child is the layout
-        # -------------------
+            return self._props["data"][trace_index] if "data" in self._props else None
         elif child is self.layout:
             return self._props.get("layout", None)
 
-        # Unknown child
-        # -------------
         else:
-            raise ValueError("Unrecognized child: %s" % child)
+            raise ValueError(f"Unrecognized child: {child}")

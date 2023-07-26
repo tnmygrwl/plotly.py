@@ -22,6 +22,6 @@ class PlotSchemaTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/plot-schema".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plot-schema")
         self.assertTrue(kwargs["timeout"])
         self.assertEqual(kwargs["params"], {"sha1": "some-hash"})

@@ -107,7 +107,7 @@ def test_acceptance_array(val, validator):
     coerce_val = validator.validate_coerce(val)
     assert coerce_val == expected
 
-    expected_present = tuple([tuple(e) for e in expected])
+    expected_present = tuple(tuple(e) for e in expected)
     assert validator.present(coerce_val) == expected_present
 
 
