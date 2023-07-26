@@ -114,11 +114,7 @@ def _generate_id(size):
     for num in range(10):
         letters_and_numbers += str(num)
     letters_and_numbers += str(num)
-    id_str = ""
-    for _ in range(size):
-        id_str += random.choice(list(letters_and_numbers))
-
-    return id_str
+    return "".join(random.choice(list(letters_and_numbers)) for _ in range(size))
 
 
 paragraph_styles = {
@@ -199,12 +195,11 @@ paragraph_styles = {
 
 
 def _empty_slide(transition, id):
-    empty_slide = {
+    return {
         "children": [],
         "id": id,
         "props": {"style": {}, "transition": transition},
     }
-    return empty_slide
 
 
 def _box(
@@ -263,7 +258,7 @@ def _box(
         if "?share_key" in text_or_url:
             src = text_or_url
         else:
-            src = text_or_url + ".embed?link=false"
+            src = f"{text_or_url}.embed?link=false"
         props = {
             "frameBorder": 0,
             "scrolling": "no",
@@ -313,14 +308,10 @@ def _box(
 
 
 def _percentage_to_pixel(value, side):
-    if side == "left":
+    if side in ["left", "width"]:
         return WIDTH * (0.01 * value)
-    elif side == "top":
+    elif side in ["top", "height"]:
         return HEIGHT * (0.01 * value)
-    elif side == "height":
-        return HEIGHT * (0.01 * value)
-    elif side == "width":
-        return WIDTH * (0.01 * value)
 
 
 def _return_box_position(left, top, height, width):
@@ -352,11 +343,11 @@ def _list_of_slides(markdown_string):
 
     text_blocks = re.split("\n-{2,}\n", markdown_string)
 
-    list_of_slides = []
-    for text in text_blocks:
-        if not all(char in ["\n", "-", " "] for char in text):
-            list_of_slides.append(text)
-
+    list_of_slides = [
+        text
+        for text in text_blocks
+        if any(char not in ["\n", "-", " "] for char in text)
+    ]
     if "\n-\n" in markdown_string:
         msg = (
             "You have at least one '-' by itself on its own line in your "
@@ -391,12 +382,11 @@ def _top_spec_for_text_at_bottom(text_block, width_per, per_from_bottom=0, min_t
         if char == "\n":
             num_of_lines += 1
             char_group = 0
+        elif char_group >= chars_in_full_line:
+            char_group = 0
+            num_of_lines += 1
         else:
-            if char_group >= chars_in_full_line:
-                char_group = 0
-                num_of_lines += 1
-            else:
-                char_group += 1
+            char_group += 1
 
     num_of_lines += 1
     top_frac = (max_lines - num_of_lines) / float(max_lines)
@@ -419,11 +409,7 @@ def _box_specs_gen(
     # are added to specs_for_boxes
     specs_for_boxes = []
     if num_of_boxes == 1 and grouptype in ["leftgroup_v", "rightgroup_v"]:
-        if grouptype == "rightgroup_v":
-            left_shift = 100 - width_range
-        else:
-            left_shift = 0
-
+        left_shift = 100 - width_range if grouptype == "rightgroup_v" else 0
         box_spec = (
             left_shift + (margin / WIDTH) * 100,
             (margin / HEIGHT) * 100,
@@ -433,11 +419,7 @@ def _box_specs_gen(
         specs_for_boxes.append(box_spec)
 
     elif num_of_boxes > 1 and grouptype in ["leftgroup_v", "rightgroup_v"]:
-        if grouptype == "rightgroup_v":
-            left_shift = 100 - width_range
-        else:
-            left_shift = 0
-
+        left_shift = 100 - width_range if grouptype == "rightgroup_v" else 0
         if num_of_boxes % 2 == 0:
             box_width_px = 0.5 * (
                 (float(width_range) / 100) * WIDTH - 2 * margin - betw_boxes
@@ -485,22 +467,13 @@ def _box_specs_gen(
             specs_for_boxes.append(specs)
 
     elif "checkerboard" in grouptype and num_of_boxes == 2:
-        if grouptype == "checkerboard_topleft":
-            for j in range(2):
-                left = j * 50
-                top = j * 50
-                height = 50
-                width = 50
-                specs = (left, top, height, width)
-                specs_for_boxes.append(specs)
-        else:
-            for j in range(2):
-                left = 50 * (1 - j)
-                top = j * 50
-                height = 50
-                width = 50
-                specs = (left, top, height, width)
-                specs_for_boxes.append(specs)
+        height = 50
+        width = 50
+        for j in range(2):
+            left = j * 50 if grouptype == "checkerboard_topleft" else 50 * (1 - j)
+            top = j * 50
+            specs = (left, top, height, width)
+            specs_for_boxes.append(specs)
     return specs_for_boxes
 
 
@@ -541,10 +514,7 @@ def _return_layout_specs(
         bkgd_color = "#F4FAFB"
         title_font_color = "#0D0A1E"
         text_font_color = "#96969C"
-        if num_of_boxes == 0 and slide_num == 0:
-            text_textAlign = "center"
-        else:
-            text_textAlign = "left"
+        text_textAlign = "center" if num_of_boxes == 0 and slide_num == 0 else "left"
         if num_of_boxes == 0:
             specs_for_title = (0, 50, 20, 100)
             specs_for_text = (15, 60, 50, 70)
@@ -553,13 +523,29 @@ def _return_layout_specs(
             title_font_color = "#F4FAFB"
             text_font_color = "#F4FAFB"
         elif num_of_boxes == 1:
-            if code_blocks != [] or (
+            if code_blocks != []:
+                w_range = 40
+                text_top = _top_spec_for_text_at_bottom(
+                    text_block, 80, per_from_bottom=(margin / HEIGHT) * 100
+                )
+                specs_for_title = (0, 3, 20, 100)
+                specs_for_text = (10, text_top, 30, 80)
+                specs_for_boxes = _box_specs_gen(
+                    num_of_boxes,
+                    grouptype="middle",
+                    width_range=w_range,
+                    height_range=60,
+                    margin=margin,
+                    betw_boxes=4,
+                )
+                bkgd_color = "#0D0A1E"
+                title_font_color = "#F4FAFB"
+                text_font_color = "#F4FAFB"
+                code_theme = "tomorrow"
+            elif (
                 url_lines != [] and get_config()["plotly_domain"] in url_lines[0]
             ):
-                if code_blocks != []:
-                    w_range = 40
-                else:
-                    w_range = 60
+                w_range = 40 if code_blocks != [] else 60
                 text_top = _top_spec_for_text_at_bottom(
                     text_block, 80, per_from_bottom=(margin / HEIGHT) * 100
                 )
@@ -621,10 +607,7 @@ def _return_layout_specs(
             text_top = _top_spec_for_text_at_bottom(
                 text_block, 92, per_from_bottom=(margin / HEIGHT) * 100, min_top=15
             )
-            if num_of_boxes == 2:
-                betw_boxes = 90
-            else:
-                betw_boxes = 10
+            betw_boxes = 90 if num_of_boxes == 2 else 10
             specs_for_title = (0, 3, 20, 100)
             specs_for_text = (4, text_top, 1, 92)
             specs_for_boxes = _box_specs_gen(
@@ -690,17 +673,12 @@ def _return_layout_specs(
         bkgd_color = "#FFFFFF"
         title_font_color = None
         text_font_color = None
-        if num_of_boxes == 0 and slide_num == 0:
-            text_textAlign = "center"
-        else:
-            text_textAlign = "left"
+        text_textAlign = "center" if num_of_boxes == 0 and slide_num == 0 else "left"
         if num_of_boxes == 0:
             if slide_num == 0 or text_block == "":
-                bkgd_color = "#F7F7F7"
                 specs_for_title = (0, 50, 20, 100)
                 specs_for_text = (15, 60, 50, 70)
             else:
-                bkgd_color = "#F7F7F7"
                 text_top = _top_spec_for_text_at_bottom(
                     text_block,
                     width_per=90,
@@ -710,6 +688,7 @@ def _return_layout_specs(
                 specs_for_title = (0, 2, 20, 100)
                 specs_for_text = (5, text_top, 50, 90)
 
+            bkgd_color = "#F7F7F7"
         elif num_of_boxes == 1:
             if code_blocks != []:
                 # code
@@ -759,10 +738,10 @@ def _return_layout_specs(
                     specs_for_title = (0, 3, 20, 50)
                     specs_for_text = (2, text_top, 2, width_per - 2)
             elif url_lines != [] and get_config()["plotly_domain"] in url_lines[0]:
+                # top half
+                width_per = 95
                 # url
                 if slide_num % 2 == 0:
-                    # top half
-                    width_per = 95
                     text_top = _top_spec_for_text_at_bottom(
                         text_block,
                         width_per=width_per,
@@ -777,10 +756,7 @@ def _return_layout_specs(
                         middle_center=30,
                     )
                     specs_for_title = (0, 60, 20, 100)
-                    specs_for_text = (2.5, text_top, 2, width_per)
                 else:
-                    # middle across
-                    width_per = 95
                     text_top = _top_spec_for_text_at_bottom(
                         text_block,
                         width_per=width_per,
@@ -794,12 +770,12 @@ def _return_layout_specs(
                         height_range=60,
                     )
                     specs_for_title = (0, 3, 20, 100)
-                    specs_for_text = (2.5, text_top, 2, width_per)
+                specs_for_text = (2.5, text_top, 2, width_per)
             else:
+                # right
+                width_per = 50
                 # image
                 if slide_num % 2 == 0:
-                    # right
-                    width_per = 50
                     text_top = _top_spec_for_text_at_bottom(
                         text_block,
                         width_per=width_per,
@@ -812,8 +788,6 @@ def _return_layout_specs(
                     specs_for_title = (0, 3, 20, 50)
                     specs_for_text = (2, text_top, 2, width_per - 2)
                 else:
-                    # left
-                    width_per = 50
                     text_top = _top_spec_for_text_at_bottom(
                         text_block,
                         width_per=width_per,
@@ -891,7 +865,7 @@ def _return_layout_specs(
 
 
 def _url_parens_contained(url_name, line):
-    return line.startswith(url_name + "(") and line.endswith(")")
+    return line.startswith(f"{url_name}(") and line.endswith(")")
 
 
 class Presentation(dict):

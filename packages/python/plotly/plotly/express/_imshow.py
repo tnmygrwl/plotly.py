@@ -77,7 +77,7 @@ def _array_to_b64str(img, backend="pil", compression=4, ext="png"):
                 "install pillow or use `backend='pypng'."
             )
         pil_img = Image.fromarray(img)
-        if ext == "jpg" or ext == "jpeg":
+        if ext in ["jpg", "jpeg"]:
             prefix = "data:image/jpeg;base64,"
             ext = "jpeg"
         else:
@@ -110,19 +110,18 @@ def _vectorize_zvalue(z, mode="max"):
 
 def _infer_zmax_from_type(img):
     dt = img.dtype.type
-    rtol = 1.05
     if dt in _integer_types:
         return _integer_ranges[dt][1]
+    im_max = img[np.isfinite(img)].max()
+    rtol = 1.05
+    if im_max <= 1 * rtol:
+        return 1
+    elif im_max <= 255 * rtol:
+        return 255
+    elif im_max <= 65535 * rtol:
+        return 65535
     else:
-        im_max = img[np.isfinite(img)].max()
-        if im_max <= 1 * rtol:
-            return 1
-        elif im_max <= 255 * rtol:
-            return 255
-        elif im_max <= 65535 * rtol:
-            return 65535
-        else:
-            return 2 ** 32
+        return 2 ** 32
 
 
 def imshow(
@@ -395,8 +394,7 @@ def imshow(
         if labels["color"]:
             layout["coloraxis1"]["colorbar"] = dict(title_text=labels["color"])
 
-    # For 2D+RGB data, use Image trace
-    elif img.ndim == 3 and img.shape[-1] in [3, 4] or (img.ndim == 2 and binary_string):
+    elif img.ndim == 3 and img.shape[-1] in [3, 4] or img.ndim == 2:
         rescale_image = True  # to check whether image has been modified
         if zmin is not None and zmax is not None:
             zmin, zmax = (
@@ -437,14 +435,14 @@ def imshow(
             layout["yaxis"] = dict(autorange=True)
     else:
         raise ValueError(
-            "px.imshow only accepts 2D single-channel, RGB or RGBA images. "
-            "An image of shape %s was provided" % str(img.shape)
+            f"px.imshow only accepts 2D single-channel, RGB or RGBA images. An image of shape {str(img.shape)} was provided"
         )
 
-    layout_patch = dict()
-    for attr_name in ["height", "width"]:
-        if args[attr_name]:
-            layout_patch[attr_name] = args[attr_name]
+    layout_patch = {
+        attr_name: args[attr_name]
+        for attr_name in ["height", "width"]
+        if args[attr_name]
+    }
     if args["title"]:
         layout_patch["title_text"] = args["title"]
     elif args["template"].layout.margin.t is None:

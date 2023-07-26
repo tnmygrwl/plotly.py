@@ -38,17 +38,15 @@ def build_url(resource, id="", route=""):
     # can refer to a 'list' or a 'detail' route. Since it cannot refer to
     # both at the same time, it's overloaded in this function.
     if id:
-        if route:
-            url = "{base}/v2/{resource}/{id}/{route}".format(**formatter)
-        else:
-            url = "{base}/v2/{resource}/{id}".format(**formatter)
+        return (
+            "{base}/v2/{resource}/{id}/{route}".format(**formatter)
+            if route
+            else "{base}/v2/{resource}/{id}".format(**formatter)
+        )
+    elif route:
+        return "{base}/v2/{resource}/{route}".format(**formatter)
     else:
-        if route:
-            url = "{base}/v2/{resource}/{route}".format(**formatter)
-        else:
-            url = "{base}/v2/{resource}".format(**formatter)
-
-    return url
+        return "{base}/v2/{resource}".format(**formatter)
 
 
 def validate_response(response):
@@ -98,7 +96,7 @@ def get_headers():
     creds = config.get_credentials()
 
     headers = {
-        "plotly-client-platform": "python {}".format(version.stable_semver()),
+        "plotly-client-platform": f"python {version.stable_semver()}",
         "content-type": "application/json",
     }
 
@@ -109,9 +107,8 @@ def get_headers():
         headers["authorization"] = proxy_auth
         if creds["username"] and creds["api_key"]:
             headers["plotly-authorization"] = plotly_auth
-    else:
-        if creds["username"] and creds["api_key"]:
-            headers["authorization"] = plotly_auth
+    elif creds["username"] and creds["api_key"]:
+        headers["authorization"] = plotly_auth
 
     return headers
 

@@ -181,6 +181,6 @@ def _get_dataset(d):
             os.path.dirname(os.path.dirname(__file__)),
             "package_data",
             "datasets",
-            d + ".csv.gz",
+            f"{d}.csv.gz",
         )
     )

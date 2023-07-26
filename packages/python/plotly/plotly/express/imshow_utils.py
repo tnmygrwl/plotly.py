@@ -2,6 +2,7 @@
 Extracted from scikit-image/skimage/exposure/exposure.py
 """
 
+
 import numpy as np
 
 from warnings import warn
@@ -25,12 +26,9 @@ dtype_range = {
     np.float16: (-1, 1),
     np.float32: (-1, 1),
     np.float64: (-1, 1),
-}
-dtype_range.update(_integer_ranges)
-
-
+} | _integer_ranges
 DTYPE_RANGE = dtype_range.copy()
-DTYPE_RANGE.update((d.__name__, limits) for d, limits in dtype_range.items())
+DTYPE_RANGE |= ((d.__name__, limits) for d, limits in dtype_range.items())
 DTYPE_RANGE.update(
     {
         "uint10": (0, 2 ** 10 - 1),
@@ -114,19 +112,17 @@ def _output_dtype(dtype_or_range):
     if type(dtype_or_range) == type:
         # already a type: return it
         return dtype_or_range
-    if dtype_or_range in DTYPE_RANGE:
-        # string key in DTYPE_RANGE dictionary
-        try:
-            # if it's a canonical numpy dtype, convert
-            return np.dtype(dtype_or_range).type
-        except TypeError:  # uint10, uint12, uint14
-            # otherwise, return uint16
-            return np.uint16
-    else:
+    if dtype_or_range not in DTYPE_RANGE:
         raise ValueError(
-            "Incorrect value for out_range, should be a valid image data "
-            "type or a pair of values, got %s." % str(dtype_or_range)
+            f"Incorrect value for out_range, should be a valid image data type or a pair of values, got {str(dtype_or_range)}."
         )
+    # string key in DTYPE_RANGE dictionary
+    try:
+        # if it's a canonical numpy dtype, convert
+        return np.dtype(dtype_or_range).type
+    except TypeError:  # uint10, uint12, uint14
+        # otherwise, return uint16
+        return np.uint16
 
 
 def rescale_intensity(image, in_range="image", out_range="dtype"):

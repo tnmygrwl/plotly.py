@@ -70,7 +70,7 @@ class {class_name}({superclass_name}):
         )
 
     buffer.write(
-        f""",
+        """,
         **kwargs"""
     )
 
@@ -109,7 +109,10 @@ def write_validator_py(outdir, node: PlotlyNode):
     # ----------
     # filepath = opath.join(outdir, "validators", *node.parent_path_parts, "__init__.py")
     filepath = opath.join(
-        outdir, "validators", *node.parent_path_parts, "_" + node.name_property + ".py"
+        outdir,
+        "validators",
+        *node.parent_path_parts,
+        f"_{node.name_property}.py",
     )
 
     write_source_py(validator_source, filepath, leading_newlines=2)
@@ -154,15 +157,11 @@ def build_data_validator_params(base_trace_node: TraceNode):
 
     class_map_repr = buffer.getvalue()
 
-    # Build params dict
-    # -----------------
-    params = {
+    return {
         "class_strs_map": class_map_repr,
         "plotly_name": repr("data"),
         "parent_name": repr(""),
     }
-
-    return params
 
 
 def build_data_validator_py(base_trace_node: TraceNode):

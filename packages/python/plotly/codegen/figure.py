@@ -191,7 +191,7 @@ class {fig_classname}({base_classname}):\n"""
         """
         )
 
-        for i, subtype_node in enumerate(trace_node.child_datatypes):
+        for subtype_node in trace_node.child_datatypes:
             subtype_prop_name = subtype_node.name_property
             buffer.write(
                 f"""
@@ -199,15 +199,11 @@ class {fig_classname}({base_classname}):\n"""
             )
 
         buffer.write(
-            f"""
+            """
             **kwargs)"""
         )
 
-        if include_secondary_y:
-            secondary_y_kwarg = ", secondary_y=secondary_y"
-        else:
-            secondary_y_kwarg = ""
-
+        secondary_y_kwarg = ", secondary_y=secondary_y" if include_secondary_y else ""
         buffer.write(
             f"""
         return self.add_trace(
@@ -224,7 +220,7 @@ class {fig_classname}({base_classname}):\n"""
         if singular_name == "yaxis":
             secondary_y_1 = ", secondary_y=None"
             secondary_y_2 = ", secondary_y=secondary_y"
-            secondary_y_docstring = f"""
+            secondary_y_docstring = """
         secondary_y: boolean or None (default None)
             * If True, only select yaxis objects associated with the secondary
               y-axis of the subplot.
@@ -364,12 +360,7 @@ class {fig_classname}({base_classname}):\n"""
         singular_name = node.plotly_name
         plural_name = node.name_property
 
-        if singular_name == "image":
-            # Rename image to layout_image to avoid conflict with an image trace
-            method_prefix = "layout_"
-        else:
-            method_prefix = ""
-
+        method_prefix = "layout_" if singular_name == "image" else ""
         buffer.write(
             f"""
     def select_{method_prefix}{plural_name}(
@@ -571,7 +562,7 @@ class {fig_classname}({base_classname}):\n"""
             """
         )
 
-        for i, subtype_node in enumerate(node.child_datatypes):
+        for subtype_node in node.child_datatypes:
             subtype_prop_name = subtype_node.name_property
             buffer.write(
                 f"""

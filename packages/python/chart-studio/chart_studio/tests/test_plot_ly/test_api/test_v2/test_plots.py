@@ -22,7 +22,7 @@ class PlotsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(url, "{}/v2/plots".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plots")
         self.assertEqual(kwargs["data"], '{{"filename": "{}"}}'.format(filename))
 
     def test_retrieve(self):
@@ -31,7 +31,7 @@ class PlotsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/plots/hodor:88".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plots/hodor:88")
         self.assertEqual(kwargs["params"], {})
 
     def test_retrieve_share_key(self):
@@ -40,7 +40,7 @@ class PlotsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/plots/hodor:88".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plots/hodor:88")
         self.assertEqual(kwargs["params"], {"share_key": "foobar"})
 
     def test_update(self):
@@ -50,7 +50,7 @@ class PlotsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "put")
-        self.assertEqual(url, "{}/v2/plots/hodor:88".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plots/hodor:88")
         self.assertEqual(kwargs["data"], '{{"filename": "{}"}}'.format(new_filename))
 
     def test_trash(self):
@@ -59,9 +59,7 @@ class PlotsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(
-            url, "{}/v2/plots/hodor:88/trash".format(self.plotly_api_domain)
-        )
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plots/hodor:88/trash")
 
     def test_restore(self):
         plots.restore("hodor:88")
@@ -69,9 +67,7 @@ class PlotsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(
-            url, "{}/v2/plots/hodor:88/restore".format(self.plotly_api_domain)
-        )
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plots/hodor:88/restore")
 
     def test_permanent_delete(self):
         plots.permanent_delete("hodor:88")
@@ -80,7 +76,7 @@ class PlotsTest(PlotlyApiTestCase):
         method, url = args
         self.assertEqual(method, "delete")
         self.assertEqual(
-            url, "{}/v2/plots/hodor:88/permanent_delete".format(self.plotly_api_domain)
+            url, f"{self.plotly_api_domain}/v2/plots/hodor:88/permanent_delete"
         )
 
     def test_lookup(self):
@@ -102,5 +98,5 @@ class PlotsTest(PlotlyApiTestCase):
             "user": user,
         }
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/plots/lookup".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/plots/lookup")
         self.assertEqual(kwargs["params"], expected_params)

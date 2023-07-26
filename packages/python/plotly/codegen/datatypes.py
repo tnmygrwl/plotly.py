@@ -37,12 +37,9 @@ def get_typing_type(plotly_type, array_ok=False):
     elif plotly_type == "boolean":
         pytype = "bool"
     else:
-        raise ValueError("Unknown plotly type: %s" % plotly_type)
+        raise ValueError(f"Unknown plotly type: {plotly_type}")
 
-    if array_ok:
-        return f"{pytype}|numpy.ndarray"
-    else:
-        return pytype
+    return f"{pytype}|numpy.ndarray" if array_ok else pytype
 
 
 def build_datatype_py(node):
@@ -200,9 +197,7 @@ class {datatype_class}(_{node.name_base_datatype}):\n"""
             )
         )
 
-        # # #### Get validator description ####
-        validator = subtype_node.get_validator_instance()
-        if validator:
+        if validator := subtype_node.get_validator_instance():
             validator_description = reindent_validator_description(validator, 4)
 
             # #### Combine to form property docstring ####
@@ -242,7 +237,7 @@ class {datatype_class}(_{node.name_base_datatype}):\n"""
         self['{subtype_node.name_property}'] = val\n"""
         )
 
-        # ### Literals ###
+            # ### Literals ###
     for literal_node in literal_nodes:
         buffer.write(
             f"""\
@@ -273,8 +268,9 @@ class {datatype_class}(_{node.name_base_datatype}):\n"""
     )
 
     mapped_nodes = [n for n in subtype_nodes if n.is_mapped]
-    mapped_properties = {n.plotly_name: n.relative_path for n in mapped_nodes}
-    if mapped_properties:
+    if mapped_properties := {
+        n.plotly_name: n.relative_path for n in mapped_nodes
+    }:
         buffer.write(
             f"""
 
@@ -283,7 +279,7 @@ class {datatype_class}(_{node.name_base_datatype}):\n"""
 
     # ### Constructor ###
     buffer.write(
-        f"""
+        """
     def __init__(self"""
     )
 
@@ -297,9 +293,8 @@ class {datatype_class}(_{node.name_base_datatype}):\n"""
 
     extras = [
         (
-            f"arg",
-            f"dict of properties compatible with this constructor "
-            f"or an instance of :class:`{class_name}`",
+            "arg",
+            f"dict of properties compatible with this constructor or an instance of :class:`{class_name}`",
         )
     ]
 
@@ -354,7 +349,7 @@ an instance of :class:`{class_name}`\"\"\")
     )
 
     buffer.write(
-        f"""
+        """
 
         # Populate data dict with properties
         # ----------------------------------"""
@@ -372,7 +367,7 @@ an instance of :class:`{class_name}`\"\"\")
     # ### Literals ###
     if literal_nodes:
         buffer.write(
-            f"""
+            """
 
         # Read-only literals
         # ------------------
@@ -388,7 +383,7 @@ an instance of :class:`{class_name}`\"\"\")
             )
 
     buffer.write(
-        f"""
+        """
     
         # Process unknown kwargs
         # ----------------------
@@ -453,7 +448,7 @@ def add_constructor_params(buffer, subtype_nodes, prepend_extras=(), append_extr
             {extra}=None"""
         )
 
-    for i, subtype_node in enumerate(subtype_nodes):
+    for subtype_node in subtype_nodes:
         buffer.write(
             f""",
             {subtype_node.name_property}=None"""
@@ -470,7 +465,7 @@ def add_constructor_params(buffer, subtype_nodes, prepend_extras=(), append_extr
             **kwargs"""
     )
     buffer.write(
-        f"""
+        """
         ):"""
     )
 
@@ -602,7 +597,10 @@ def write_datatype_py(outdir, node):
     # ---------------
     # filepath = opath.join(outdir, "graph_objs", *node.parent_path_parts, "__init__.py")
     filepath = opath.join(
-        outdir, "graph_objs", *node.parent_path_parts, "_" + node.name_undercase + ".py"
+        outdir,
+        "graph_objs",
+        *node.parent_path_parts,
+        f"_{node.name_undercase}.py",
     )
 
     # Generate source code

@@ -173,18 +173,9 @@ class _AnnotatedHeatmap(object):
     ):
 
         self.z = z
-        if x:
-            self.x = x
-        else:
-            self.x = range(len(z[0]))
-        if y:
-            self.y = y
-        else:
-            self.y = range(len(z))
-        if annotation_text is not None:
-            self.annotation_text = annotation_text
-        else:
-            self.annotation_text = self.z
+        self.x = x if x else range(len(z[0]))
+        self.y = y if y else range(len(z))
+        self.annotation_text = self.z if annotation_text is None else annotation_text
         self.colorscale = colorscale
         self.reversescale = reversescale
         self.font_colors = font_colors
@@ -250,15 +241,8 @@ class _AnnotatedHeatmap(object):
             if self.reversescale:
                 min_col, max_col = max_col, min_col
 
-            if should_use_black_text(min_col):
-                min_text_color = black
-            else:
-                min_text_color = white
-
-            if should_use_black_text(max_col):
-                max_text_color = black
-            else:
-                max_text_color = white
+            min_text_color = black if should_use_black_text(min_col) else white
+            max_text_color = black if should_use_black_text(max_col) else white
         else:
             min_text_color = black
             max_text_color = black
@@ -274,10 +258,9 @@ class _AnnotatedHeatmap(object):
             z_min = np.amin(self.z)
             z_max = np.amax(self.z)
         else:
-            z_min = min([v for row in self.z for v in row])
-            z_max = max([v for row in self.z for v in row])
-        z_mid = (z_max + z_min) / 2
-        return z_mid
+            z_min = min(v for row in self.z for v in row)
+            z_max = max(v for row in self.z for v in row)
+        return (z_max + z_min) / 2
 
     def make_annotations(self):
         """

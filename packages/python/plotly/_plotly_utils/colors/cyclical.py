@@ -47,7 +47,7 @@ def swatches_cyclical(template=None):
     for i, scale in enumerate(scales):
         fig.add_trace(
             go.Barpolar(
-                r=[1] * int(360 / 5),
+                r=[1] * (360 // 5),
                 theta=list(range(0, 360, 5)),
                 marker_color=list(range(0, 360, 5)),
                 marker_cmin=0,
@@ -184,7 +184,7 @@ _contents = dict(globals())
 for _k, _cols in _contents.items():
     if _k.startswith("_") or _k.startswith("swatches") or _k.endswith("_r"):
         continue
-    globals()[_k + "_r"] = _cols[::-1]
+    globals()[f"{_k}_r"] = _cols[::-1]
 
 
 __all__ = [

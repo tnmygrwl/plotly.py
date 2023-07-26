@@ -18,11 +18,8 @@ from _plotly_utils.optional_imports import get_module
 # back-port of fullmatch from Py3.4+
 def fullmatch(regex, string, flags=0):
     """Emulate python-3.4 re.fullmatch()."""
-    if "pattern" in dir(regex):
-        regex_string = regex.pattern
-    else:
-        regex_string = regex
-    return re.match("(?:" + regex_string + r")\Z", string, flags=flags)
+    regex_string = regex.pattern if "pattern" in dir(regex) else regex
+    return re.match(f"(?:{regex_string}" + r")\Z", string, flags=flags)
 
 
 # Utility functions
@@ -42,9 +39,7 @@ def to_scalar_or_list(v):
     if isinstance(v, (list, tuple)):
         return [to_scalar_or_list(e) for e in v]
     elif np and isinstance(v, np.ndarray):
-        if v.ndim == 0:
-            return v.item()
-        return [to_scalar_or_list(e) for e in v]
+        return v.item() if v.ndim == 0 else [to_scalar_or_list(e) for e in v]
     elif pd and isinstance(v, (pd.Series, pd.Index)):
         return [to_scalar_or_list(e) for e in v]
     elif is_numpy_convertable(v):
@@ -98,26 +93,20 @@ def copy_to_readonly_numpy_array(v, kind=None, force_numeric=False):
             v = v.values
         elif v.dtype.kind == "M":
             # Convert datetime Series/Index to numpy array of datetimes
-            if isinstance(v, pd.Series):
-                v = v.dt.to_pydatetime()
-            else:
-                # DatetimeIndex
-                v = v.to_pydatetime()
+            v = v.dt.to_pydatetime() if isinstance(v, pd.Series) else v.to_pydatetime()
     if not isinstance(v, np.ndarray):
-        # v has its own logic on how to convert itself into a numpy array
         if is_numpy_convertable(v):
             return copy_to_readonly_numpy_array(
                 np.array(v), kind=kind, force_numeric=force_numeric
             )
-        else:
-            # v is not homogenous array
-            v_list = [to_scalar_or_list(e) for e in v]
+        # v is not homogenous array
+        v_list = [to_scalar_or_list(e) for e in v]
 
-            # Lookup dtype for requested kind, if any
-            dtype = kind_default_dtypes.get(first_kind, None)
+        # Lookup dtype for requested kind, if any
+        dtype = kind_default_dtypes.get(first_kind, None)
 
-            # construct new array from list
-            new_v = np.array(v_list, order="C", dtype=dtype)
+        # construct new array from list
+        new_v = np.array(v_list, order="C", dtype=dtype)
     elif v.dtype.kind in numeric_kinds:
         # v is a homogenous numeric array
         if kind and v.dtype.kind not in kind:
@@ -179,10 +168,7 @@ def is_homogeneous_array(v):
     if is_numpy_convertable(v):
         v_numpy = np.array(v)
         # v is essentially a scalar and so shouldn't count as an array
-        if v_numpy.shape == ():
-            return False
-        else:
-            return True
+        return v_numpy.shape != ()
     return False
 
 
@@ -270,7 +256,7 @@ class BaseValidator(object):
         name = self.plotly_name
         if inds:
             for i in inds:
-                name += "[" + str(i) + "]"
+                name += f"[{str(i)}]"
 
         raise ValueError(
             """
@@ -464,24 +450,11 @@ class EnumeratedValidator(BaseValidator):
 
     @staticmethod
     def build_regex_replacement(regex_str):
-        # Example: regex_str == r"^y([2-9]|[1-9][0-9]+)?$"
-        #
-        # When we see a regular expression like the one above, we want to
-        # build regular expression replacement params that will remove a
-        # suffix of 1 from the input string ('y1' -> 'y' in this example)
-        #
-        # Why?: Regular expressions like this one are used in enumeration
-        # properties that refer to subplotids (e.g. layout.annotation.xref)
-        # The regular expressions forbid suffixes of 1, like 'x1'. But we
-        # want to accept 'x1' and coerce it into 'x'
-        #
-        # To be cautious, we only perform this conversion for enumerated
-        # values that match the anchor-style regex
-        match = re.match(r"\^(\w)\(\[2\-9\]\|\[1\-9\]\[0\-9\]\+\)\?\$", regex_str)
-
-        if match:
-            anchor_char = match.group(1)
-            return "^" + anchor_char + "1$", anchor_char
+        if match := re.match(
+            r"\^(\w)\(\[2\-9\]\|\[1\-9\]\[0\-9\]\+\)\?\$", regex_str
+        ):
+            anchor_char = match[1]
+            return f"^{anchor_char}1$", anchor_char
         else:
             return None
 
@@ -521,13 +494,10 @@ class EnumeratedValidator(BaseValidator):
                 )
             )
 
-            desc = (
-                desc
-                + """
+            desc += """
       - One of the following enumeration values:
 {enum_vals_str}""".format(
-                    enum_vals_str=enum_vals_str
-                )
+                enum_vals_str=enum_vals_str
             )
 
         if enum_regexs:
@@ -540,21 +510,15 @@ class EnumeratedValidator(BaseValidator):
                 )
             )
 
-            desc = (
-                desc
-                + """
+            desc += """
       - A string that matches one of the following regular expressions:
 {enum_regexs_str}""".format(
-                    enum_regexs_str=enum_regexs_str
-                )
+                enum_regexs_str=enum_regexs_str
             )
 
         if self.array_ok:
-            desc = (
-                desc
-                + """
+            desc += """
       - A tuple, list, or one-dimensional numpy array of the above"""
-            )
 
         return desc
 
@@ -564,12 +528,7 @@ class EnumeratedValidator(BaseValidator):
         """
         is_str = isinstance(e, string_types)
         for v, regex in zip(self.values, self.val_regexs):
-            if is_str and regex:
-                in_values = fullmatch(regex, e) is not None
-                # in_values = regex.fullmatch(e) is not None
-            else:
-                in_values = e == v
-
+            in_values = fullmatch(regex, e) is not None if is_str and regex else e == v
             if in_values:
                 return True
 
@@ -582,8 +541,7 @@ class EnumeratedValidator(BaseValidator):
         elif self.array_ok and is_array(v):
             v_replaced = [self.perform_replacemenet(v_el) for v_el in v]
 
-            invalid_els = [e for e in v_replaced if (not self.in_values(e))]
-            if invalid_els:
+            if invalid_els := [e for e in v_replaced if (not self.in_values(e))]:
                 self.raise_invalid_elements(invalid_els[:10])
 
             if is_homogeneous_array(v):
@@ -685,24 +643,10 @@ class NumberValidator(BaseValidator):
         )
 
         # Handle min
-        if min is None and max is not None:
-            # Max was specified, so make min -inf
-            self.min_val = float("-inf")
-        else:
-            self.min_val = min
-
+        self.min_val = float("-inf") if min is None and max is not None else min
         # Handle max
-        if max is None and min is not None:
-            # Min was specified, so make min inf
-            self.max_val = float("inf")
-        else:
-            self.max_val = max
-
-        if min is not None or max is not None:
-            self.has_min_max = True
-        else:
-            self.has_min_max = False
-
+        self.max_val = float("inf") if max is None and min is not None else max
+        self.has_min_max = min is not None or max is not None
         self.array_ok = array_ok
 
     def description(self):
@@ -712,27 +656,18 @@ class NumberValidator(BaseValidator):
         )
 
         if not self.has_min_max:
-            desc = (
-                desc
-                + """
+            desc += """
       - An int or float"""
-            )
 
         else:
-            desc = (
-                desc
-                + """
+            desc += """
       - An int or float in the interval [{min_val}, {max_val}]""".format(
-                    min_val=self.min_val, max_val=self.max_val
-                )
+                min_val=self.min_val, max_val=self.max_val
             )
 
         if self.array_ok:
-            desc = (
-                desc
-                + """
+            desc += """
       - A tuple, list, or one-dimensional numpy array of the above"""
-            )
 
         return desc
 
@@ -764,17 +699,13 @@ class NumberValidator(BaseValidator):
 
             v = v_array  # Always numeric numpy array
         elif self.array_ok and is_simple_array(v):
-            # Check numeric
-            invalid_els = [e for e in v if not isinstance(e, numbers.Number)]
-
-            if invalid_els:
+            if invalid_els := [e for e in v if not isinstance(e, numbers.Number)]:
                 self.raise_invalid_elements(invalid_els[:10])
 
-            # Check min/max
-            if self.has_min_max:
-                invalid_els = [e for e in v if not (self.min_val <= e <= self.max_val)]
-
-                if invalid_els:
+            if invalid_els := [
+                e for e in v if not (self.min_val <= e <= self.max_val)
+            ]:
+                if self.has_min_max:
                     self.raise_invalid_elements(invalid_els[:10])
 
             v = to_scalar_or_list(v)
@@ -814,24 +745,10 @@ class IntegerValidator(BaseValidator):
         )
 
         # Handle min
-        if min is None and max is not None:
-            # Max was specified, so make min -inf
-            self.min_val = -sys.maxsize - 1
-        else:
-            self.min_val = min
-
+        self.min_val = -sys.maxsize - 1 if min is None and max is not None else min
         # Handle max
-        if max is None and min is not None:
-            # Min was specified, so make min inf
-            self.max_val = sys.maxsize
-        else:
-            self.max_val = max
-
-        if min is not None or max is not None:
-            self.has_min_max = True
-        else:
-            self.has_min_max = False
-
+        self.max_val = sys.maxsize if max is None and min is not None else max
+        self.has_min_max = min is not None or max is not None
         self.array_ok = array_ok
 
     def description(self):
@@ -841,26 +758,18 @@ class IntegerValidator(BaseValidator):
         )
 
         if not self.has_min_max:
-            desc = (
-                desc
-                + """
+            desc += """
       - An int (or float that will be cast to an int)"""
-            )
         else:
-            desc = desc + (
-                """
+            desc += """
       - An int (or float that will be cast to an int)
         in the interval [{min_val}, {max_val}]""".format(
-                    min_val=self.min_val, max_val=self.max_val
-                )
+                min_val=self.min_val, max_val=self.max_val
             )
 
         if self.array_ok:
-            desc = (
-                desc
-                + """
+            desc += """
       - A tuple, list, or one-dimensional numpy array of the above"""
-            )
 
         return desc
 
@@ -893,17 +802,13 @@ class IntegerValidator(BaseValidator):
 
             v = v_array
         elif self.array_ok and is_simple_array(v):
-            # Check integer type
-            invalid_els = [e for e in v if not isinstance(e, int)]
-
-            if invalid_els:
+            if invalid_els := [e for e in v if not isinstance(e, int)]:
                 self.raise_invalid_elements(invalid_els[:10])
 
-            # Check min/max
-            if self.has_min_max:
-                invalid_els = [e for e in v if not (self.min_val <= e <= self.max_val)]
-
-                if invalid_els:
+            if invalid_els := [
+                e for e in v if not (self.min_val <= e <= self.max_val)
+            ]:
+                if self.has_min_max:
                     self.raise_invalid_elements(invalid_els[:10])
 
             v = to_scalar_or_list(v)
@@ -961,10 +866,7 @@ class StringValidator(BaseValidator):
         Convert a value to a string if it's not None, a string,
         or a unicode (on Python 2).
         """
-        if v is None or isinstance(v, string_types):
-            return v
-        else:
-            return str(v)
+        return v if v is None or isinstance(v, string_types) else str(v)
 
     def description(self):
         desc = """\
@@ -973,11 +875,8 @@ class StringValidator(BaseValidator):
         )
 
         if self.no_blank:
-            desc = (
-                desc
-                + """
+            desc += """
       - A non-empty string"""
-            )
         elif self.values:
             valid_str = "\n".join(
                 textwrap.wrap(
@@ -988,34 +887,22 @@ class StringValidator(BaseValidator):
                 )
             )
 
-            desc = (
-                desc
-                + """
+            desc += """
       - One of the following strings:
 {valid_str}""".format(
-                    valid_str=valid_str
-                )
+                valid_str=valid_str
             )
         else:
-            desc = (
-                desc
-                + """
+            desc += """
       - A string"""
-            )
 
         if not self.strict:
-            desc = (
-                desc
-                + """
+            desc += """
       - A number that will be converted to a string"""
-            )
 
         if self.array_ok:
-            desc = (
-                desc
-                + """
+            desc += """
       - A tuple, list, or one-dimensional numpy array of the above"""
-            )
 
         return desc
 
@@ -1027,8 +914,9 @@ class StringValidator(BaseValidator):
 
             # If strict, make sure all elements are strings.
             if self.strict:
-                invalid_els = [e for e in v if not isinstance(e, string_types)]
-                if invalid_els:
+                if invalid_els := [
+                    e for e in v if not isinstance(e, string_types)
+                ]:
                     self.raise_invalid_elements(invalid_els)
 
             if is_homogeneous_array(v):
@@ -1039,15 +927,13 @@ class StringValidator(BaseValidator):
 
                 # Check no_blank
                 if self.no_blank:
-                    invalid_els = v[v == ""][:10].tolist()
-                    if invalid_els:
+                    if invalid_els := v[v == ""][:10].tolist():
                         self.raise_invalid_elements(invalid_els)
 
                 # Check values
                 if self.values:
                     invalid_inds = np.logical_not(np.isin(v, self.values))
-                    invalid_els = v[invalid_inds][:10].tolist()
-                    if invalid_els:
+                    if invalid_els := v[invalid_inds][:10].tolist():
                         self.raise_invalid_elements(invalid_els)
 
             elif is_simple_array(v):
@@ -1056,31 +942,30 @@ class StringValidator(BaseValidator):
 
                 # Check no_blank
                 if self.no_blank:
-                    invalid_els = [e for e in v if e == ""]
-                    if invalid_els:
+                    if invalid_els := [e for e in v if e == ""]:
                         self.raise_invalid_elements(invalid_els)
 
                 # Check values
                 if self.values:
-                    invalid_els = [e for e in v if v not in self.values]
-                    if invalid_els:
+                    if invalid_els := [e for e in v if v not in self.values]:
                         self.raise_invalid_elements(invalid_els)
 
                 v = to_scalar_or_list(v)
 
         else:
-            if self.strict:
-                if not isinstance(v, string_types):
-                    self.raise_invalid_val(v)
-            else:
-                if isinstance(v, string_types):
-                    pass
-                elif isinstance(v, (int, float)):
-                    # Convert value to a string
-                    v = str(v)
-                else:
-                    self.raise_invalid_val(v)
-
+            if (
+                self.strict
+                and not isinstance(v, string_types)
+                or not self.strict
+                and not isinstance(v, string_types)
+                and not isinstance(v, (int, float))
+            ):
+                self.raise_invalid_val(v)
+            elif self.strict:
+                pass
+            elif not isinstance(v, string_types):
+                # Convert value to a string
+                v = str(v)
             if self.no_blank and len(v) == 0:
                 self.raise_invalid_val(v)
 
@@ -1304,21 +1189,15 @@ class ColorValidator(BaseValidator):
         )
 
         if self.colorscale_path:
-            valid_color_description = (
-                valid_color_description
-                + """
+            valid_color_description += """
       - A number that will be interpreted as a color
         according to {colorscale_path}""".format(
-                    colorscale_path=self.colorscale_path
-                )
+                colorscale_path=self.colorscale_path
             )
 
         if self.array_ok:
-            valid_color_description = (
-                valid_color_description
-                + """
+            valid_color_description += """
       - A list or array of any of the above"""
-            )
 
         return valid_color_description
 
@@ -1328,11 +1207,7 @@ class ColorValidator(BaseValidator):
             pass
         elif self.array_ok and is_homogeneous_array(v):
             v = copy_to_readonly_numpy_array(v)
-            if self.numbers_allowed() and v.dtype.kind in ["u", "i", "f"]:
-                # Numbers are allowed and we have an array of numbers.
-                # All good
-                pass
-            else:
+            if not self.numbers_allowed() or v.dtype.kind not in ["u", "i", "f"]:
                 validated_v = [self.validate_coerce(e, should_raise=False) for e in v]
 
                 invalid_els = self.find_invalid_els(v, validated_v)
@@ -1378,9 +1253,8 @@ class ColorValidator(BaseValidator):
         for orig_el, validated_el in zip(orig, validated):
             if is_array(orig_el):
                 self.find_invalid_els(orig_el, validated_el, invalid_els)
-            else:
-                if validated_el is None:
-                    invalid_els.append(orig_el)
+            elif validated_el is None:
+                invalid_els.append(orig_el)
 
         return invalid_els
 
@@ -1476,10 +1350,11 @@ class ColorlistValidator(BaseValidator):
                 ColorValidator.perform_validate_coerce(e, allow_number=False) for e in v
             ]
 
-            invalid_els = [
-                el for el, validated_el in zip(v, validated_v) if validated_el is None
-            ]
-            if invalid_els:
+            if invalid_els := [
+                el
+                for el, validated_el in zip(v, validated_v)
+                if validated_el is None
+            ]:
                 self.raise_invalid_elements(invalid_els)
 
             v = to_scalar_or_list(v)
@@ -1551,7 +1426,7 @@ class ColorscaleValidator(BaseValidator):
             )
         )
 
-        desc = """\
+        return """\
     The '{plotly_name}' property is a colorscale and may be
     specified as:
       - A list of colors that will be spaced evenly to create the colorscale.
@@ -1567,8 +1442,6 @@ class ColorscaleValidator(BaseValidator):
 """.format(
             plotly_name=self.plotly_name, colorscales_str=colorscales_str
         )
-
-        return desc
 
     def validate_coerce(self, v):
         v_valid = False
@@ -1597,7 +1470,7 @@ class ColorscaleValidator(BaseValidator):
                     e for e in v if ColorValidator.perform_validate_coerce(e) is None
                 ]
 
-                if len(invalid_els) == 0:
+                if not invalid_els:
                     v_valid = True
 
                     # Convert to list of lists colorscale
@@ -1617,7 +1490,7 @@ class ColorscaleValidator(BaseValidator):
                     )
                 ]
 
-                if len(invalid_els) == 0:
+                if not invalid_els:
                     v_valid = True
 
                     # Convert to list of lists
@@ -1637,7 +1510,7 @@ class ColorscaleValidator(BaseValidator):
         elif isinstance(v, string_types):
             return v
         else:
-            return tuple([tuple(e) for e in v])
+            return tuple(tuple(e) for e in v)
 
 
 class AngleValidator(BaseValidator):
@@ -1657,7 +1530,7 @@ class AngleValidator(BaseValidator):
         )
 
     def description(self):
-        desc = """\
+        return """\
     The '{plotly_name}' property is a angle (in degrees) that may be
     specified as a number between -180 and 180. Numeric values outside this
     range are converted to the equivalent value
@@ -1665,8 +1538,6 @@ class AngleValidator(BaseValidator):
         """.format(
             plotly_name=self.plotly_name
         )
-
-        return desc
 
     def validate_coerce(self, v):
         if v is None:
@@ -1706,17 +1577,12 @@ class SubplotidValidator(BaseValidator):
             plotly_name=plotly_name, parent_name=parent_name, **kwargs
         )
 
-        if dflt is not None:
-            self.base = dflt
-        else:
-            # e.g. regex == '/^y([2-9]|[1-9][0-9]+)?$/'
-            self.base = re.match(r"/\^(\w+)", regex).group(1)
-
+        self.base = dflt if dflt is not None else re.match(r"/\^(\w+)", regex)[1]
         self.regex = self.base + r"(\d*)"
 
     def description(self):
 
-        desc = """\
+        return """\
     The '{plotly_name}' property is an identifier of a particular
     subplot, of type '{base}', that may be specified as the string '{base}'
     optionally followed by an integer >= 1
@@ -1724,7 +1590,6 @@ class SubplotidValidator(BaseValidator):
         """.format(
             plotly_name=self.plotly_name, base=self.base
         )
-        return desc
 
     def validate_coerce(self, v):
         if v is None:
@@ -1732,11 +1597,7 @@ class SubplotidValidator(BaseValidator):
         elif not isinstance(v, string_types):
             self.raise_invalid_val(v)
         else:
-            # match = re.fullmatch(self.regex, v)
-            match = fullmatch(self.regex, v)
-            if not match:
-                is_valid = False
-            else:
+            if match := fullmatch(self.regex, v):
                 digit_str = match.group(1)
                 if len(digit_str) > 0 and int(digit_str) == 0:
                     is_valid = False
@@ -1747,6 +1608,8 @@ class SubplotidValidator(BaseValidator):
                 else:
                     is_valid = True
 
+            else:
+                is_valid = False
             if not is_valid:
                 self.raise_invalid_val(v)
         return v
@@ -1792,31 +1655,22 @@ class FlaglistValidator(BaseValidator):
         ).format(plotly_name=self.plotly_name)
 
         # Flags
-        desc = (
-            desc
-            + (
-                """
+        desc += (
+            """
       - Any combination of {flags} joined with '+' characters
         (e.g. '{eg_flag}')"""
-            ).format(flags=self.flags, eg_flag="+".join(self.flags[:2]))
-        )
+        ).format(flags=self.flags, eg_flag="+".join(self.flags[:2]))
 
         # Extras
         if self.extras:
-            desc = (
-                desc
-                + (
-                    """
+            desc += (
+                """
         OR exactly one of {extras} (e.g. '{eg_extra}')"""
-                ).format(extras=self.extras, eg_extra=self.extras[-1])
-            )
+            ).format(extras=self.extras, eg_extra=self.extras[-1])
 
         if self.array_ok:
-            desc = (
-                desc
-                + """
+            desc += """
       - A list or array of the above"""
-            )
 
         return desc
 
@@ -1829,19 +1683,16 @@ class FlaglistValidator(BaseValidator):
         split_vals = [e.strip() for e in re.split("[,+]", v)]
 
         # Are all flags valid names?
-        all_flags_valid = all([f in self.all_flags for f in split_vals])
+        all_flags_valid = all(f in self.all_flags for f in split_vals)
 
         # Are any 'extras' flags present?
-        has_extras = any([f in self.extras for f in split_vals])
+        has_extras = any(f in self.extras for f in split_vals)
 
         # For flaglist to be valid all flags must be valid, and if we have
         # any extras present, there must be only one flag (the single extras
         # flag)
         is_valid = all_flags_valid and (not has_extras or len(split_vals) == 1)
-        if is_valid:
-            return "+".join(split_vals)
-        else:
-            return None
+        return "+".join(split_vals) if is_valid else None
 
     def validate_coerce(self, v):
         if v is None:
@@ -1852,10 +1703,11 @@ class FlaglistValidator(BaseValidator):
             # Coerce individual strings
             validated_v = [self.vc_scalar(e) for e in v]
 
-            invalid_els = [
-                el for el, validated_el in zip(v, validated_v) if validated_el is None
-            ]
-            if invalid_els:
+            if invalid_els := [
+                el
+                for el, validated_el in zip(v, validated_v)
+                if validated_el is None
+            ]:
                 self.raise_invalid_elements(invalid_els)
 
             if is_homogeneous_array(v):
@@ -1895,12 +1747,11 @@ class AnyValidator(BaseValidator):
 
     def description(self):
 
-        desc = """\
+        return """\
     The '{plotly_name}' property accepts values of any type
         """.format(
             plotly_name=self.plotly_name
         )
-        return desc
 
     def validate_coerce(self, v):
         if v is None:
@@ -2102,7 +1953,7 @@ class InfoArrayValidator(BaseValidator):
         orig_name = validator.plotly_name
         new_name = self.plotly_name
         for i in inds:
-            new_name += "[" + str(i) + "]"
+            new_name += f"[{str(i)}]"
         validator.plotly_name = new_name
         try:
             val = validator.validate_coerce(val)
@@ -2178,31 +2029,30 @@ class InfoArrayValidator(BaseValidator):
     def present(self, v):
         if v is None:
             return None
+        if (
+            self.dimensions == 2
+            or self.dimensions == "1-2"
+            and v
+            and is_array(v[0])
+        ):
+
+            # 2D case
+            v = copy.deepcopy(v)
+            for row in v:
+                for i, (el, validator) in enumerate(zip(row, self.item_validators)):
+                    row[i] = validator.present(el)
+
+            return tuple(tuple(row) for row in v)
         else:
-            if (
-                self.dimensions == 2
-                or self.dimensions == "1-2"
-                and v
-                and is_array(v[0])
-            ):
+            # 1D case
+            v = copy.copy(v)
+            # Call present on each of the item validators
+            for i, (el, validator) in enumerate(zip(v, self.item_validators)):
+                # Validate coerce elements
+                v[i] = validator.present(el)
 
-                # 2D case
-                v = copy.deepcopy(v)
-                for row in v:
-                    for i, (el, validator) in enumerate(zip(row, self.item_validators)):
-                        row[i] = validator.present(el)
-
-                return tuple(tuple(row) for row in v)
-            else:
-                # 1D case
-                v = copy.copy(v)
-                # Call present on each of the item validators
-                for i, (el, validator) in enumerate(zip(v, self.item_validators)):
-                    # Validate coerce elements
-                    v[i] = validator.present(el)
-
-                # Return tuple form of
-                return tuple(v)
+            # Return tuple form of
+            return tuple(v)
 
 
 class LiteralValidator(BaseValidator):
@@ -2291,22 +2141,16 @@ class DashValidator(EnumeratedValidator):
                 )
             )
 
-            desc = (
-                desc
-                + """
+            desc += """
       - One of the following dash styles:
 {enum_vals_str}""".format(
-                    enum_vals_str=enum_vals_str
-                )
+                enum_vals_str=enum_vals_str
             )
 
-        desc = (
-            desc
-            + """
+        desc += """
       - A string containing a dash length list in pixels or percentages
             (e.g. '5px 10px 2px 2px', '5, 10, 2, 2', '10% 20% 40%', etc.)
 """
-        )
         return desc
 
 
@@ -2325,7 +2169,7 @@ class ImageUriValidator(BaseValidator):
 
     def description(self):
 
-        desc = """\
+        return """\
     The '{plotly_name}' property is an image URI that may be specified as:
       - A remote image URI string
         (e.g. 'http://www.somewhere.com/image.png')
@@ -2337,7 +2181,6 @@ class ImageUriValidator(BaseValidator):
         """.format(
             plotly_name=self.plotly_name
         )
-        return desc
 
     def validate_coerce(self, v):
         if v is None:
@@ -2391,23 +2234,22 @@ class CompoundValidator(BaseValidator):
             # graph_objs.Data and graph_objs.Layout
 
             parent_parts = parent_name.split(".")
-            module_str = ".".join(["plotly.graph_objs"] + parent_parts[1:])
+            return ".".join(["plotly.graph_objs"] + parent_parts[1:])
         elif parent_name == "layout.template" and data_class_str == "Layout":
             # Remap template's layout to regular layout
-            module_str = "plotly.graph_objs"
+            return "plotly.graph_objs"
         elif "layout.template.data" in parent_name:
-            # Remap template's traces to regular traces
-            parent_name = parent_name.replace("layout.template.data.", "")
-            if parent_name:
-                module_str = "plotly.graph_objs." + parent_name
-            else:
-                module_str = "plotly.graph_objs"
+            return (
+                f"plotly.graph_objs.{parent_name}"
+                if (
+                    parent_name := parent_name.replace("layout.template.data.", "")
+                )
+                else "plotly.graph_objs"
+            )
         elif parent_name:
-            module_str = "plotly.graph_objs." + parent_name
+            return f"plotly.graph_objs.{parent_name}"
         else:
-            module_str = "plotly.graph_objs"
-
-        return module_str
+            return "plotly.graph_objs"
 
     @property
     def data_class(self):
@@ -2419,7 +2261,7 @@ class CompoundValidator(BaseValidator):
 
     def description(self):
 
-        desc = (
+        return (
             """\
     The '{plotly_name}' property is an instance of {class_str}
     that may be specified as:
@@ -2436,8 +2278,6 @@ class CompoundValidator(BaseValidator):
             constructor_params_str=self.data_docs,
         )
 
-        return desc
-
     def validate_coerce(self, v, skip_invalid=False, _validate=True):
         if v is None:
             v = self.data_class()
@@ -2448,11 +2288,10 @@ class CompoundValidator(BaseValidator):
         elif isinstance(v, self.data_class):
             # Copy object
             v = self.data_class(v)
+        elif skip_invalid:
+            v = self.data_class()
         else:
-            if skip_invalid:
-                v = self.data_class()
-            else:
-                self.raise_invalid_val(v)
+            self.raise_invalid_val(v)
 
         v._plotly_name = self.plotly_name
         return v
@@ -2496,7 +2335,7 @@ class CompoundArrayValidator(BaseValidator):
 
     def description(self):
 
-        desc = (
+        return (
             """\
     The '{plotly_name}' property is a tuple of instances of
     {class_str} that may be specified as:
@@ -2513,8 +2352,6 @@ class CompoundArrayValidator(BaseValidator):
             constructor_params_str=self.data_docs,
         )
 
-        return desc
-
     @property
     def data_class(self):
         if self._data_class is None:
@@ -2525,10 +2362,17 @@ class CompoundArrayValidator(BaseValidator):
 
     def validate_coerce(self, v, skip_invalid=False):
 
-        if v is None:
+        if (
+            v is not None
+            and not isinstance(v, (list, tuple))
+            and skip_invalid
+            or v is None
+        ):
             v = []
+        elif not isinstance(v, (list, tuple)):
+            self.raise_invalid_val(v)
 
-        elif isinstance(v, (list, tuple)):
+        else:
             res = []
             invalid_els = []
             for v_el in v:
@@ -2536,23 +2380,16 @@ class CompoundArrayValidator(BaseValidator):
                     res.append(self.data_class(v_el))
                 elif isinstance(v_el, dict):
                     res.append(self.data_class(v_el, skip_invalid=skip_invalid))
+                elif skip_invalid:
+                    res.append(self.data_class())
                 else:
-                    if skip_invalid:
-                        res.append(self.data_class())
-                    else:
-                        res.append(None)
-                        invalid_els.append(v_el)
+                    res.append(None)
+                    invalid_els.append(v_el)
 
             if invalid_els:
                 self.raise_invalid_elements(invalid_els)
 
             v = to_scalar_or_list(res)
-        else:
-            if skip_invalid:
-                v = []
-            else:
-                self.raise_invalid_val(v)
-
         return v
 
     def present(self, v):
@@ -2585,7 +2422,7 @@ class BaseDataValidator(BaseValidator):
             )
         )
 
-        desc = (
+        return (
             """\
     The '{plotly_name}' property is a tuple of trace instances
     that may be specified as:
@@ -2602,8 +2439,6 @@ class BaseDataValidator(BaseValidator):
 
         (e.g. [{{'type': 'scatter', ...}}, {{'type': 'bar, ...}}])"""
         ).format(plotly_name=self.plotly_name, trace_types=trace_types_wrapped)
-
-        return desc
 
     def get_trace_class(self, trace_name):
         # Import trace classes
@@ -2645,29 +2480,27 @@ class BaseDataValidator(BaseValidator):
                     else:
                         trace_type = "scatter"
 
-                    if trace_type not in self.class_strs_map:
-                        if skip_invalid:
-                            # Treat as scatter trace
-                            trace = self.get_trace_class("scatter")(
-                                skip_invalid=skip_invalid, _validate=_validate, **v_copy
-                            )
-                            res.append(trace)
-                        else:
-                            res.append(None)
-                            invalid_els.append(v_el)
-                    else:
+                    if trace_type in self.class_strs_map:
                         trace = self.get_trace_class(trace_type)(
                             skip_invalid=skip_invalid, _validate=_validate, **v_copy
                         )
                         res.append(trace)
-                else:
-                    if skip_invalid:
-                        # Add empty scatter trace
-                        trace = self.get_trace_class("scatter")()
+                    elif skip_invalid:
+                        # Treat as scatter trace
+                        trace = self.get_trace_class("scatter")(
+                            skip_invalid=skip_invalid, _validate=_validate, **v_copy
+                        )
                         res.append(trace)
                     else:
                         res.append(None)
                         invalid_els.append(v_el)
+                elif skip_invalid:
+                    # Add empty scatter trace
+                    trace = self.get_trace_class("scatter")()
+                    res.append(trace)
+                else:
+                    res.append(None)
+                    invalid_els.append(v_el)
 
             if invalid_els:
                 self.raise_invalid_elements(invalid_els)
@@ -2718,11 +2551,9 @@ class BaseTemplateValidator(CompoundValidator):
             # (could be any hashable object)
             if v in pio.templates:
                 return copy.deepcopy(pio.templates[v])
-            # Otherwise, if v is a string, check to see if it consists of
-            # multiple template names joined on '+' characters
             elif isinstance(v, string_types):
                 template_names = v.split("+")
-                if all([name in pio.templates for name in template_names]):
+                if all(name in pio.templates for name in template_names):
                     return pio.templates.merge_templates(*template_names)
 
         except TypeError:

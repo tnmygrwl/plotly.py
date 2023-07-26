@@ -106,8 +106,7 @@ def mpl_to_plotly(fig, resize=False, strip_style=False, verbose=False):
     renderer.layout -- a plotly layout dictionary
     renderer.data -- a list of plotly data dictionaries
     """
-    matplotlylib = optional_imports.get_module("plotly.matplotlylib")
-    if matplotlylib:
+    if matplotlylib := optional_imports.get_module("plotly.matplotlylib"):
         renderer = matplotlylib.PlotlyRenderer()
         matplotlylib.Exporter(renderer).run(fig)
         if resize:
@@ -184,7 +183,7 @@ def get_subplots(rows=1, columns=1, print_grid=False, **kwargs):
 
     # Throw exception if non-valid kwarg is sent
     VALID_KWARGS = ["horizontal_spacing", "vertical_spacing"]
-    for key in kwargs.keys():
+    for key in kwargs:
         if key not in VALID_KWARGS:
             raise Exception("Invalid keyword argument: '{0}'".format(key))
 
@@ -224,9 +223,9 @@ def get_subplots(rows=1, columns=1, print_grid=False, **kwargs):
         print("This is the format of your plot grid!")
         grid_string = ""
         plot = 1
-        for rrr in range(rows):
+        for _ in range(rows):
             grid_line = ""
-            for ccc in range(columns):
+            for _ in range(columns):
                 grid_line += "[{0}]\t".format(plot)
                 plot += 1
             grid_string = grid_line + "\n" + grid_string
@@ -494,24 +493,16 @@ def get_graph_obj(obj, obj_type=None):
     try:
         cls = getattr(graph_objs, obj_type)
     except (AttributeError, KeyError):
-        raise exceptions.PlotlyError(
-            "'{}' is not a recognized graph_obj.".format(obj_type)
-        )
+        raise exceptions.PlotlyError(f"'{obj_type}' is not a recognized graph_obj.")
     return cls(obj)
 
 
 def _replace_newline(obj):
     """Replaces '\n' with '<br>' for all strings in a collection."""
     if isinstance(obj, dict):
-        d = dict()
-        for key, val in list(obj.items()):
-            d[key] = _replace_newline(val)
-        return d
+        return {key: _replace_newline(val) for key, val in list(obj.items())}
     elif isinstance(obj, list):
-        l = list()
-        for index, entry in enumerate(obj):
-            l += [_replace_newline(entry)]
-        return l
+        return [_replace_newline(entry) for entry in obj]
     elif isinstance(obj, six.string_types):
         s = obj.replace("\n", "<br>")
         if s != obj:
@@ -588,8 +579,7 @@ class FigureFactory(object):
             # The method name stayed the same.
             new_method = old_method
         warnings.warn(
-            "plotly.tools.FigureFactory.{} is deprecated. "
-            "Use plotly.figure_factory.{}".format(old_method, new_method)
+            f"plotly.tools.FigureFactory.{old_method} is deprecated. Use plotly.figure_factory.{new_method}"
         )
 
     @staticmethod

@@ -300,12 +300,9 @@ def color_parser(colors, function):
 
     if hasattr(colors, "__iter__"):
         if isinstance(colors, tuple):
-            new_color_tuple = tuple(function(item) for item in colors)
-            return new_color_tuple
-
+            return tuple(function(item) for item in colors)
         else:
-            new_color_list = [function(item) for item in colors]
-            return new_color_list
+            return [function(item) for item in colors]
 
 
 def validate_colors(colors, colortype="tuple"):
@@ -317,27 +314,29 @@ def validate_colors(colors, colortype="tuple"):
     if colors is None:
         colors = DEFAULT_PLOTLY_COLORS
 
-    if isinstance(colors, str):
-        if colors in PLOTLY_SCALES:
-            colors_list = colorscale_to_colors(PLOTLY_SCALES[colors])
-            # TODO: fix _gantt.py/_scatter.py so that they can accept the
-            # actual colorscale and not just a list of the first and last
-            # color in the plotly colorscale. In resolving this issue we
-            # will be removing the immediate line below
-            colors = [colors_list[0]] + [colors_list[-1]]
-        elif "rgb" in colors or "#" in colors:
-            colors = [colors]
-        else:
-            raise exceptions.PlotlyError(
-                "If your colors variable is a string, it must be a "
-                "Plotly scale, an rgb color or a hex color."
-            )
+    if isinstance(colors, str) and colors in PLOTLY_SCALES:
+        colors_list = colorscale_to_colors(PLOTLY_SCALES[colors])
+        # TODO: fix _gantt.py/_scatter.py so that they can accept the
+        # actual colorscale and not just a list of the first and last
+        # color in the plotly colorscale. In resolving this issue we
+        # will be removing the immediate line below
+        colors = [colors_list[0]] + [colors_list[-1]]
+    elif (
+        isinstance(colors, str)
+        and ("rgb" in colors or "#" in colors)
+        or not isinstance(colors, str)
+        and isinstance(colors, tuple)
+        and isinstance(colors[0], Number)
+    ):
+        colors = [colors]
+    elif isinstance(colors, str):
+        raise exceptions.PlotlyError(
+            "If your colors variable is a string, it must be a "
+            "Plotly scale, an rgb color or a hex color."
+        )
 
     elif isinstance(colors, tuple):
-        if isinstance(colors[0], Number):
-            colors = [colors]
-        else:
-            colors = list(colors)
+        colors = list(colors)
 
     # convert color elements in list to tuple color
     for j, each_color in enumerate(colors):
@@ -439,7 +438,7 @@ def convert_colors_to_same_type(
     colors_list = []
 
     if colors is None and return_default_colors is True:
-        colors_list = DEFAULT_PLOTLY_COLORS[0:num_of_defualt_colors]
+        colors_list = DEFAULT_PLOTLY_COLORS[:num_of_defualt_colors]
 
     if isinstance(colors, str):
         if colors in PLOTLY_SCALES:
@@ -451,11 +450,7 @@ def convert_colors_to_same_type(
             colors_list = [colors]
 
     elif isinstance(colors, tuple):
-        if isinstance(colors[0], Number):
-            colors_list = [colors]
-        else:
-            colors_list = list(colors)
-
+        colors_list = [colors] if isinstance(colors[0], Number) else list(colors)
     elif isinstance(colors, list):
         colors_list = colors
 
@@ -465,8 +460,7 @@ def convert_colors_to_same_type(
 
         if len(colors_list) != len(scale):
             raise exceptions.PlotlyError(
-                "Make sure that the length of your scale matches the length "
-                "of your list of colors which is {}.".format(len(colors_list))
+                f"Make sure that the length of your scale matches the length of your list of colors which is {len(colors_list)}."
             )
 
     # convert all colors to rgb
@@ -545,7 +539,7 @@ def validate_scale_values(scale):
             "respectively."
         )
 
-    if not all(x < y for x, y in zip(scale, scale[1:])):
+    if any(x >= y for x, y in zip(scale, scale[1:])):
         raise exceptions.PlotlyError(
             "'scale' must be a list that contains a strictly increasing "
             "sequence of numbers."
@@ -599,8 +593,7 @@ def make_colorscale(colors, scale=None):
 
         validate_scale_values(scale)
 
-        colorscale = [list(tup) for tup in zip(scale, colors)]
-        return colorscale
+        return [list(tup) for tup in zip(scale, colors)]
 
 
 def find_intermediate_color(lowcolor, highcolor, intermed, colortype="tuple"):
@@ -628,12 +621,7 @@ def find_intermediate_color(lowcolor, highcolor, intermed, colortype="tuple"):
         lowcolor[2] + intermed * diff_2,
     )
 
-    if colortype == "rgb":
-        # back to an rgb string, e.g. rgb(30, 20, 10)
-        inter_med_rgb = label_rgb(inter_med_tuple)
-        return inter_med_rgb
-
-    return inter_med_tuple
+    return label_rgb(inter_med_tuple) if colortype == "rgb" else inter_med_tuple
 
 
 def unconvert_from_RGB_255(colors):
@@ -714,7 +702,7 @@ def label_rgb(colors):
     """
     Takes tuple (a, b, c) and returns an rgb color 'rgb(a, b, c)'
     """
-    return "rgb(%s, %s, %s)" % (colors[0], colors[1], colors[2])
+    return f"rgb({colors[0]}, {colors[1]}, {colors[2]})"
 
 
 def unlabel_rgb(colors):
@@ -730,10 +718,10 @@ def unlabel_rgb(colors):
             float(colors[index])
             str_vals = str_vals + colors[index]
         except ValueError:
-            if colors[index] == "," or colors[index] == ".":
+            if colors[index] in [",", "."]:
                 str_vals = str_vals + colors[index]
 
-    str_vals = str_vals + ","
+    str_vals = f"{str_vals},"
     numbers = []
     str_num = ""
     for char in str_vals:
@@ -766,20 +754,14 @@ def colorscale_to_colors(colorscale):
     """
     Extracts the colors from colorscale as a list
     """
-    color_list = []
-    for item in colorscale:
-        color_list.append(item[1])
-    return color_list
+    return [item[1] for item in colorscale]
 
 
 def colorscale_to_scale(colorscale):
     """
     Extracts the interpolation scale values from colorscale as a list
     """
-    scale_list = []
-    for item in colorscale:
-        scale_list.append(item[0])
-    return scale_list
+    return [item[0] for item in colorscale]
 
 
 def convert_colorscale_to_rgb(colorscale):
@@ -805,4 +787,4 @@ def named_colorscales():
     """
     from _plotly_utils.basevalidators import ColorscaleValidator
 
-    return [c for c in ColorscaleValidator("", "").named_colorscales]
+    return list(ColorscaleValidator("", "").named_colorscales)

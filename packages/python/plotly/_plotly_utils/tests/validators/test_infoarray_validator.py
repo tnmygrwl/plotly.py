@@ -286,8 +286,8 @@ def test_validator_acceptance_any3_free(val, validator_any3_free):
 )
 def test_validator_acceptance_number2_2d(val, validator_number2_2d):
     coerce_val = validator_number2_2d.validate_coerce(val)
-    assert coerce_val == list((list(row) for row in val))
-    expected = tuple([tuple(e) for e in val])
+    assert coerce_val == [list(row) for row in val]
+    expected = tuple(tuple(e) for e in val)
     assert validator_number2_2d.present(coerce_val) == expected
 
 
@@ -383,8 +383,8 @@ def test_validator_acceptance_number2_12d_1d(val, validator_number2_12d):
 )
 def test_validator_acceptance_number2_12d_2d(val, validator_number2_12d):
     coerce_val = validator_number2_12d.validate_coerce(val)
-    assert coerce_val == list((list(row) for row in val))
-    expected = tuple([tuple(e) for e in val])
+    assert coerce_val == [list(row) for row in val]
+    expected = tuple(tuple(e) for e in val)
     assert validator_number2_12d.present(coerce_val) == expected
 
 
@@ -535,8 +535,8 @@ def test_validator_rejection_number_free_1d_element_value(
 )
 def test_validator_acceptance_number_free_2d(val, validator_number_free_2d):
     coerce_val = validator_number_free_2d.validate_coerce(val)
-    assert coerce_val == list((list(row) for row in val))
-    expected = tuple([tuple(e) for e in val])
+    assert coerce_val == [list(row) for row in val]
+    expected = tuple(tuple(e) for e in val)
     assert validator_number_free_2d.present(coerce_val) == expected
 
 

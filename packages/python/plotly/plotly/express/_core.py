@@ -140,16 +140,13 @@ def get_decorated_label(args, column, role):
         or (role == "y" and "orientation" in args and args["orientation"] == "v")
         or (role == "z")
     ):
-        if label:
-            return "%s of %s" % (args["histfunc"] or "count", label)
-        else:
-            return "count"
+        return f'{args["histfunc"] or "count"} of {label}' if label else "count"
     else:
         return label
 
 
 def make_mapping(args, variable):
-    if variable == "line_group" or variable == "animation_frame":
+    if variable in ["line_group", "animation_frame"]:
         return Mapping(
             show_in_trace_name=False,
             grouper=args[variable],
@@ -159,14 +156,14 @@ def make_mapping(args, variable):
             updater=(lambda trace, v: v),
             facet=None,
         )
-    if variable == "facet_row" or variable == "facet_col":
+    if variable in ["facet_row", "facet_col"]:
         letter = "x" if variable == "facet_col" else "y"
         return Mapping(
             show_in_trace_name=False,
             variable=letter,
             grouper=args[variable],
             val_map={},
-            sequence=[i for i in range(1, 1000)],
+            sequence=list(range(1, 1000)),
             updater=(lambda trace, v: v),
             facet="row" if variable == "facet_row" else "col",
         )
@@ -220,8 +217,8 @@ def make_trace_kwargs(args, trace_spec, trace_data, mapping_labels, sizeref):
     if "line_close" in args and args["line_close"]:
         trace_data = trace_data.append(trace_data.iloc[0])
     trace_patch = trace_spec.trace_patch.copy() or {}
-    fit_results = None
     hover_header = ""
+    fit_results = None
     for attr_name in trace_spec.attrs:
         attr_value = args[attr_name]
         attr_label = get_decorated_label(args, attr_value, attr_name)
@@ -261,7 +258,7 @@ def make_trace_kwargs(args, trace_spec, trace_data, mapping_labels, sizeref):
         ):
             if attr_name == "size":
                 if "marker" not in trace_patch:
-                    trace_patch["marker"] = dict()
+                    trace_patch["marker"] = {}
                 trace_patch["marker"]["size"] = trace_data[attr_value]
                 trace_patch["marker"]["sizemode"] = "area"
                 trace_patch["marker"]["sizeref"] = sizeref
@@ -293,9 +290,7 @@ def make_trace_kwargs(args, trace_spec, trace_data, mapping_labels, sizeref):
                             x = x.astype(np.float64)
                         except ValueError:
                             raise ValueError(
-                                "Could not convert value of 'x' ('%s') into a numeric type. "
-                                "If 'x' contains stringified dates, please convert to a datetime column."
-                                % args["x"]
+                                f"""Could not convert value of 'x' ('{args["x"]}') into a numeric type. If 'x' contains stringified dates, please convert to a datetime column."""
                             )
                     if y.dtype.type == np.object_:
                         try:
@@ -394,7 +389,7 @@ def make_trace_kwargs(args, trace_spec, trace_data, mapping_labels, sizeref):
                     go.Funnelarea,
                 ]:
                     if "marker" not in trace_patch:
-                        trace_patch["marker"] = dict()
+                        trace_patch["marker"] = {}
 
                     if args.get("color_is_continuous"):
                         trace_patch["marker"]["colors"] = trace_data[attr_value]
@@ -417,7 +412,7 @@ def make_trace_kwargs(args, trace_spec, trace_data, mapping_labels, sizeref):
                     if trace_spec.constructor in [go.Parcats, go.Parcoords]:
                         colorable = "line"
                     if colorable not in trace_patch:
-                        trace_patch[colorable] = dict()
+                        trace_patch[colorable] = {}
                     trace_patch[colorable]["color"] = trace_data[attr_value]
                     trace_patch[colorable]["coloraxis"] = "coloraxis1"
                     mapping_labels[attr_label] = "%%{%s.color}" % colorable
@@ -466,8 +461,7 @@ def make_trace_kwargs(args, trace_spec, trace_data, mapping_labels, sizeref):
                 # We need to invert the mapping here
                 k_args = invert_label(args, k)
                 if k_args in args["hover_data"]:
-                    formatter = args["hover_data"][k_args][0]
-                    if formatter:
+                    if formatter := args["hover_data"][k_args][0]:
                         if isinstance(formatter, str):
                             mapping_labels_copy[k] = v.replace("}", "%s}" % formatter)
                     else:
@@ -575,7 +569,7 @@ def configure_cartesian_marginal_axes(args, fig, orders):
         fig.update_yaxes(type="log")
 
     # Configure matching and axis type for marginal y-axes
-    matches_y = "y" + str(ncols + 1)
+    matches_y = f"y{str(ncols + 1)}"
     if args["marginal_x"]:
         for row in range(2, nrows + 1, 2):
             fig.update_yaxes(matches=matches_y, type=None, row=row)
@@ -632,8 +626,10 @@ def configure_ternary_axes(args, fig, orders):
 def configure_polar_axes(args, fig, orders):
     layout = dict(
         polar=dict(
-            angularaxis=dict(direction=args["direction"], rotation=args["start_angle"]),
-            radialaxis=dict(),
+            angularaxis=dict(
+                direction=args["direction"], rotation=args["start_angle"]
+            ),
+            radialaxis={},
         )
     )
 
@@ -647,9 +643,8 @@ def configure_polar_axes(args, fig, orders):
         radialaxis["type"] = "log"
         if args["range_r"]:
             radialaxis["range"] = [math.log(x, 10) for x in args["range_r"]]
-    else:
-        if args["range_r"]:
-            radialaxis["range"] = args["range_r"]
+    elif args["range_r"]:
+        radialaxis["range"] = args["range_r"]
 
     if args["range_theta"]:
         layout["polar"]["sector"] = args["range_theta"]
@@ -671,9 +666,8 @@ def configure_3d_axes(args, fig, orders):
             axis["type"] = "log"
             if args["range_" + letter]:
                 axis["range"] = [math.log(x, 10) for x in args["range_" + letter]]
-        else:
-            if args["range_" + letter]:
-                axis["range"] = args["range_" + letter]
+        elif args["range_" + letter]:
+            axis["range"] = args["range_" + letter]
         if args[letter] in orders:
             axis["categoryorder"] = "array"
             axis["categoryarray"] = orders[args[letter]]
@@ -830,7 +824,7 @@ def make_trace_spec(args, constructor, attrs, trace_patch):
                 )
             if "color" in attrs or "color" not in args:
                 if "marker" not in trace_spec.trace_patch:
-                    trace_spec.trace_patch["marker"] = dict()
+                    trace_spec.trace_patch["marker"] = {}
                 first_default_color = args["color_continuous_scale"][0]
                 trace_spec.trace_patch["marker"]["color"] = first_default_color
             result.append(trace_spec)
@@ -978,7 +972,7 @@ def _is_col_list(df_input, arg):
     in df_input, and False otherwise (in which case it's assumed to be a single column
     or reference to a column).
     """
-    if arg is None or isinstance(arg, str) or isinstance(arg, int):
+    if arg is None or isinstance(arg, (str, int)):
         return False
     if isinstance(arg, pd.MultiIndex):
         return False  # just to keep existing behaviour for now
@@ -987,7 +981,7 @@ def _is_col_list(df_input, arg):
     except TypeError:
         return False  # not iterable
     for c in arg:
-        if isinstance(c, str) or isinstance(c, int):
+        if isinstance(c, (str, int)):
             if df_input is None or c not in df_input.columns:
                 return False
         else:
@@ -1003,15 +997,12 @@ def _isinstance_listlike(x):
     False for the other types of possible values of a `hover_data` dict.
     A tuple of length 2 is a special case corresponding to a (format, data) tuple.
     """
-    if (
-        isinstance(x, str)
-        or (isinstance(x, tuple) and len(x) == 2)
-        or isinstance(x, bool)
-        or x is None
-    ):
-        return False
-    else:
-        return True
+    return (
+        not isinstance(x, str)
+        and (not isinstance(x, tuple) or len(x) != 2)
+        and not isinstance(x, bool)
+        and x is not None
+    )
 
 
 def _escape_col_name(df_input, col_name, extra):

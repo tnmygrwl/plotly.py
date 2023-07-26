@@ -24,7 +24,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(url, "{}/v2/grids".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids")
         self.assertEqual(kwargs["data"], '{{"filename": "{}"}}'.format(filename))
 
     def test_retrieve(self):
@@ -33,7 +33,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/grids/hodor:88".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88")
         self.assertEqual(kwargs["params"], {})
 
     def test_retrieve_share_key(self):
@@ -42,7 +42,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/grids/hodor:88".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88")
         self.assertEqual(kwargs["params"], {"share_key": "foobar"})
 
     def test_update(self):
@@ -52,7 +52,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "put")
-        self.assertEqual(url, "{}/v2/grids/hodor:88".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88")
         self.assertEqual(kwargs["data"], '{{"filename": "{}"}}'.format(new_filename))
 
     def test_trash(self):
@@ -61,9 +61,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(
-            url, "{}/v2/grids/hodor:88/trash".format(self.plotly_api_domain)
-        )
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88/trash")
 
     def test_restore(self):
         grids.restore("hodor:88")
@@ -71,9 +69,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(
-            url, "{}/v2/grids/hodor:88/restore".format(self.plotly_api_domain)
-        )
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88/restore")
 
     def test_permanent_delete(self):
         grids.permanent_delete("hodor:88")
@@ -82,7 +78,7 @@ class GridsTest(PlotlyApiTestCase):
         method, url = args
         self.assertEqual(method, "delete")
         self.assertEqual(
-            url, "{}/v2/grids/hodor:88/permanent_delete".format(self.plotly_api_domain)
+            url, f"{self.plotly_api_domain}/v2/grids/hodor:88/permanent_delete"
         )
 
     def test_lookup(self):
@@ -104,7 +100,7 @@ class GridsTest(PlotlyApiTestCase):
             "user": user,
         }
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/grids/lookup".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/lookup")
         self.assertEqual(kwargs["params"], expected_params)
 
     def test_col_create(self):
@@ -118,7 +114,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(url, "{}/v2/grids/hodor:88/col".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88/col")
         self.assertEqual(kwargs["data"], _json.dumps(body, sort_keys=True))
 
     def test_col_retrieve(self):
@@ -127,7 +123,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "get")
-        self.assertEqual(url, "{}/v2/grids/hodor:88/col".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88/col")
         self.assertEqual(kwargs["params"], {"uid": "aaaaaa,bbbbbb"})
 
     def test_col_update(self):
@@ -141,7 +137,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "put")
-        self.assertEqual(url, "{}/v2/grids/hodor:88/col".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88/col")
         self.assertEqual(kwargs["params"], {"uid": "aaaaaa,bbbbbb"})
         self.assertEqual(kwargs["data"], _json.dumps(body, sort_keys=True))
 
@@ -151,7 +147,7 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "delete")
-        self.assertEqual(url, "{}/v2/grids/hodor:88/col".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88/col")
         self.assertEqual(kwargs["params"], {"uid": "aaaaaa,bbbbbb"})
 
     def test_row(self):
@@ -161,5 +157,5 @@ class GridsTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(url, "{}/v2/grids/hodor:88/row".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/grids/hodor:88/row")
         self.assertEqual(kwargs["data"], _json.dumps(body, sort_keys=True))

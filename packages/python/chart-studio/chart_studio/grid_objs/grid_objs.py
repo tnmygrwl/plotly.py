@@ -75,10 +75,7 @@ class Column(object):
     def __str__(self):
         max_chars = 10
         jdata = _json.dumps(self.data, cls=utils.PlotlyJSONEncoder)
-        if len(jdata) > max_chars:
-            data_string = jdata[:max_chars] + "...]"
-        else:
-            data_string = jdata
+        data_string = f"{jdata[:max_chars]}...]" if len(jdata) > max_chars else jdata
         string = '<name="{name}", data={data_string}, id={id}>'
         return string.format(name=self.name, data=data_string, id=self.id)
 
@@ -158,15 +155,16 @@ class Grid(MutableSequence):
         # TODO: verify that columns are actually columns
         pd = get_module("pandas")
         if pd and isinstance(columns_or_json, pd.DataFrame):
-            duplicate_name = utils.get_first_duplicate(columns_or_json.columns)
-            if duplicate_name:
+            if duplicate_name := utils.get_first_duplicate(
+                columns_or_json.columns
+            ):
                 err = exceptions.NON_UNIQUE_COLUMN_MESSAGE.format(duplicate_name)
                 raise exceptions.InputError(err)
 
-            # create columns from dataframe
-            all_columns = []
-            for name in columns_or_json.columns:
-                all_columns.append(Column(columns_or_json[name].tolist(), name))
+            all_columns = [
+                Column(columns_or_json[name].tolist(), name)
+                for name in columns_or_json.columns
+            ]
             self._columns = all_columns
             self.id = ""
 
@@ -197,11 +195,10 @@ class Grid(MutableSequence):
                             "Each column name of your dictionary must have "
                             "'data', 'order' and 'uid' as keys."
                         )
-            # collect and sort all orders in case orders do not start
-            # at zero or there are jump discontinuities between them
-            all_orders = []
-            for column_name in columns_or_json["cols"].keys():
-                all_orders.append(columns_or_json["cols"][column_name]["order"])
+            all_orders = [
+                columns_or_json["cols"][column_name]["order"]
+                for column_name in columns_or_json["cols"].keys()
+            ]
             all_orders.sort()
 
             # put columns in order in a list
@@ -218,12 +215,11 @@ class Grid(MutableSequence):
 
             # fill in column_ids
             for column in self:
-                column.id = self.id + ":" + columns_or_json["cols"][column.name]["uid"]
+                column.id = f"{self.id}:" + columns_or_json["cols"][column.name]["uid"]
 
         else:
             column_names = [column.name for column in columns_or_json]
-            duplicate_name = utils.get_first_duplicate(column_names)
-            if duplicate_name:
+            if duplicate_name := utils.get_first_duplicate(column_names):
                 err = exceptions.NON_UNIQUE_COLUMN_MESSAGE.format(duplicate_name)
                 raise exceptions.InputError(err)
 
@@ -283,16 +279,12 @@ class Grid(MutableSequence):
         Raises an error if the column name is not in the grid. Otherwise,
         returns the fid:uid pair, which may be the empty string.
         """
-        column_id = None
-        for column in self._columns:
-            if column.name == column_name:
-                column_id = column.id
-                break
-
+        column_id = next(
+            (column.id for column in self._columns if column.name == column_name),
+            None,
+        )
         if column_id is None:
-            col_names = []
-            for column in self._columns:
-                col_names.append(column.name)
+            col_names = [column.name for column in self._columns]
             raise _plotly_utils.exceptions.PlotlyError(
                 "Whoops, that column name doesn't match any of the column "
                 "names in your grid. You must pick from {cols}".format(cols=col_names)

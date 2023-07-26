@@ -205,7 +205,7 @@ class TestPlot(PlotlyTestCase):
         }
 
         private_plot_url = py.plot(self.simple_figure, **kwargs)
-        private_plot_response = requests.get(private_plot_url + ".json")
+        private_plot_response = requests.get(f"{private_plot_url}.json")
 
         # The json file of the private plot should be 404
         self.assertEqual(private_plot_response.status_code, 404)
@@ -213,7 +213,7 @@ class TestPlot(PlotlyTestCase):
         secret_plot_url = py.add_share_key_to_url(private_plot_url)
         urlsplit = six.moves.urllib.parse.urlparse(secret_plot_url)
         secret_plot_json_file = six.moves.urllib.parse.urljoin(
-            urlsplit.geturl(), "?.json" + urlsplit.query
+            urlsplit.geturl(), f"?.json{urlsplit.query}"
         )
         secret_plot_response = requests.get(secret_plot_json_file)
 

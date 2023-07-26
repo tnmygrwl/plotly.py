@@ -138,10 +138,7 @@ def _create_us_counties_df(st_to_state_name_dict, state_to_st_dict):
     gdf_reduced = gdf[["FIPS", "STATEFP", "COUNTY_NAME", "geometry"]]
     gdf_statefp = gdf_reduced.merge(df_state[["STATEFP", "STATE_NAME"]], on="STATEFP")
 
-    ST = []
-    for n in gdf_statefp["STATE_NAME"]:
-        ST.append(state_to_st_dict[n])
-
+    ST = [state_to_st_dict[n] for n in gdf_statefp["STATE_NAME"]]
     gdf_statefp["ST"] = ST
     return gdf_statefp, df_state
 
@@ -302,11 +299,11 @@ def _intervals_as_labels(array_of_intervals, round_legend_values, exponent_forma
                 num1 = "{:,}".format(num1)
 
         if num0 == float("-inf"):
-            as_str = "< {}".format(num1)
+            as_str = f"< {num1}"
         elif num1 == float("inf"):
-            as_str = "> {}".format(num0)
+            as_str = f"> {num0}"
         else:
-            as_str = "{} - {}".format(num0, num1)
+            as_str = f"{num0} - {num1}"
         string_intervals.append(as_str)
     return string_intervals
 
@@ -333,21 +330,10 @@ def _calculations(
         y = fips_polygon_map[f].simplify(simplify_county).exterior.xy[1].tolist()
 
         x_c, y_c = fips_polygon_map[f].centroid.xy
-        county_name_str = str(df[df["FIPS"] == f]["COUNTY_NAME"].iloc[0])
         state_name_str = str(df[df["FIPS"] == f]["STATE_NAME"].iloc[0])
 
-        t_c = (
-            "County: "
-            + county_name_str
-            + "<br>"
-            + "State: "
-            + state_name_str
-            + "<br>"
-            + "FIPS: "
-            + padded_f
-            + "<br>Value: "
-            + str(values[index])
-        )
+        county_name_str = str(df[df["FIPS"] == f]["COUNTY_NAME"].iloc[0])
+        t_c = f"County: {county_name_str}<br>State: {state_name_str}<br>FIPS: {padded_f}<br>Value: {str(values[index])}"
 
         x_centroids.append(x_c[0])
         y_centroids.append(y_c[0])
@@ -368,21 +354,10 @@ def _calculations(
         x_c = [poly.centroid.xy[0].tolist() for poly in fips_polygon_map[f]]
         y_c = [poly.centroid.xy[1].tolist() for poly in fips_polygon_map[f]]
 
-        county_name_str = str(df[df["FIPS"] == f]["COUNTY_NAME"].iloc[0])
         state_name_str = str(df[df["FIPS"] == f]["STATE_NAME"].iloc[0])
-        text = (
-            "County: "
-            + county_name_str
-            + "<br>"
-            + "State: "
-            + state_name_str
-            + "<br>"
-            + "FIPS: "
-            + padded_f
-            + "<br>Value: "
-            + str(values[index])
-        )
-        t_c = [text for poly in fips_polygon_map[f]]
+        county_name_str = str(df[df["FIPS"] == f]["COUNTY_NAME"].iloc[0])
+        text = f"County: {county_name_str}<br>State: {state_name_str}<br>FIPS: {padded_f}<br>Value: {str(values[index])}"
+        t_c = [text for _ in fips_polygon_map[f]]
         x_centroids = x_c + x_centroids
         y_centroids = y_c + y_centroids
         centroid_text = t_c + centroid_text

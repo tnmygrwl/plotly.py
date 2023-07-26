@@ -25,12 +25,8 @@ classes_str = "\n".join(classes)
 # print(classes_str)
 
 submodules_str = "\n".join(submodules)
-# print(submodules_str)
-
-autosubmodule = ""
-
-for submodule in submodules:
-    autosubmodule += (
-        ".. automodule:: plotly.graph_objects.%s\n    :members:\n\n" % submodule
-    )
+autosubmodule = "".join(
+    (".. automodule:: plotly.graph_objects.%s\n    :members:\n\n" % submodule)
+    for submodule in submodules
+)
 print(autosubmodule)

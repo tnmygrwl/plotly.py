@@ -56,13 +56,7 @@ def _py_to_js(v, widget_manager):
 
     # Handle Undefined
     # ----------------
-    if v is Undefined:
-        return "_undefined_"
-
-    # Handle simple value
-    # -------------------
-    else:
-        return v
+    return "_undefined_" if v is Undefined else v
 
 
 def _js_to_py(v, widget_manager):

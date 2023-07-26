@@ -289,11 +289,7 @@ class _Distplot(object):
         self.show_hist = show_hist
         self.show_curve = show_curve
         self.trace_number = len(hist_data)
-        if rug_text:
-            self.rug_text = rug_text
-        else:
-            self.rug_text = [None] * self.trace_number
-
+        self.rug_text = rug_text if rug_text else [None] * self.trace_number
         self.start = []
         self.end = []
         if colors:
@@ -377,7 +373,7 @@ class _Distplot(object):
                 mode="lines",
                 name=self.group_labels[index],
                 legendgroup=self.group_labels[index],
-                showlegend=False if self.show_hist else True,
+                showlegend=not self.show_hist,
                 marker=dict(color=self.colors[index % len(self.colors)]),
             )
         return curve
@@ -417,7 +413,7 @@ class _Distplot(object):
                 mode="lines",
                 name=self.group_labels[index],
                 legendgroup=self.group_labels[index],
-                showlegend=False if self.show_hist else True,
+                showlegend=not self.show_hist,
                 marker=dict(color=self.colors[index % len(self.colors)]),
             )
         return curve
@@ -440,10 +436,11 @@ class _Distplot(object):
                 mode="markers",
                 name=self.group_labels[index],
                 legendgroup=self.group_labels[index],
-                showlegend=(False if self.show_hist or self.show_curve else True),
+                showlegend=not self.show_hist and not self.show_curve,
                 text=self.rug_text[index],
                 marker=dict(
-                    color=self.colors[index % len(self.colors)], symbol="line-ns-open"
+                    color=self.colors[index % len(self.colors)],
+                    symbol="line-ns-open",
                 ),
             )
         return rug

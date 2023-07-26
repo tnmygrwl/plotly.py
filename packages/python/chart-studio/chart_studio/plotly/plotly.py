@@ -91,7 +91,7 @@ def _plot_option_logic(plot_options_from_args):
         utils.set_sharing_and_world_readable(option_set)
 
     user_plot_options = {}
-    user_plot_options.update(default_plot_options)
+    user_plot_options |= default_plot_options
     user_plot_options.update(file_options)
     user_plot_options.update(session_options)
     user_plot_options.update(plot_options_from_args)
@@ -143,8 +143,7 @@ def iplot(figure_or_data, **plot_options):
     else:
         layout = {}
 
-    embed_options = dict()
-    embed_options["width"] = layout.get("width", "100%")
+    embed_options = {"width": layout.get("width", "100%")}
     embed_options["height"] = layout.get("height", 525)
     try:
         float(embed_options["width"])
@@ -233,11 +232,11 @@ def plot(figure_or_data, validate=True, **plot_options):
     if filename:
         # Strip trailing slash
         if filename[-1] == "/":
-            filename = filename[0:-1]
+            filename = filename[:-1]
 
         # split off any parent directory
         paths = filename.split("/")
-        parent_path = "/".join(paths[0:-1])
+        parent_path = "/".join(paths[:-1])
         filename = paths[-1]
 
         # Create parent directory
@@ -269,9 +268,9 @@ def plot(figure_or_data, validate=True, **plot_options):
         if not filename:
             grid_filename = None
         elif parent_path:
-            grid_filename = parent_path + "/" + filename + "_grid"
+            grid_filename = f"{parent_path}/{filename}_grid"
         else:
-            grid_filename = filename + "_grid"
+            grid_filename = f"{filename}_grid"
 
         grid_ops.upload(
             grid=grid,
@@ -291,9 +290,7 @@ def plot(figure_or_data, validate=True, **plot_options):
     else:
         web_url = file_info["web_url"]
 
-    # Handle auto_open
-    auto_open = plot_options.get("auto_open", None)
-    if auto_open:
+    if auto_open := plot_options.get("auto_open", None):
         _open_url(web_url)
 
     # Return URL
@@ -407,7 +404,7 @@ def _swap_xy_data(data_obj):
 
         # if we can't do transpose, we hit an exception before here
         z = data_obj.pop("z")
-        data_obj["z"] = [[0 for rrr in range(rows)] for ccc in range(cols)]
+        data_obj["z"] = [[0 for _ in range(rows)] for _ in range(cols)]
         for iii in range(rows):
             for jjj in range(cols):
                 data_obj["z"][jjj][iii] = z[iii][jjj]
@@ -422,9 +419,7 @@ def _swap_xy_data(data_obj):
             pass
         if warn:
             warnings.warn(
-                "Data in this file required an 'xy' swap but the 'z' matrix "
-                "in one of the data objects could not be transposed. Here's "
-                "why:\n\n{}".format(repr(err))
+                f"Data in this file required an 'xy' swap but the 'z' matrix in one of the data objects could not be transposed. Here's why:\n\n{repr(err)}"
             )
 
 
@@ -491,7 +486,7 @@ def get_figure(file_owner_or_url, file_id=None, raw=False):
                 "\nRun help on this function for more information."
                 "".format(url, plotly_rest_url)
             )
-        head = plotly_rest_url + "/~"
+        head = f"{plotly_rest_url}/~"
         file_owner = url.replace(head, "").split("/")[0]
         file_id = url.replace(head, "").split("/")[1]
     else:
@@ -510,7 +505,7 @@ def get_figure(file_owner_or_url, file_id=None, raw=False):
             "The 'file_id' argument must be a non-negative number."
         )
 
-    fid = "{}:{}".format(file_owner, file_id)
+    fid = f"{file_owner}:{file_id}"
     response = v2.plots.content(fid, inline_data=True)
     figure = response.json()
     if six.PY2:
@@ -552,9 +547,7 @@ def get_figure(file_owner_or_url, file_id=None, raw=False):
         if "stream" in entry:
             del figure["data"][index]["stream"]
 
-    if raw:
-        return figure
-    return plotly.tools.get_graph_obj(figure, obj_type="Figure")
+    return figure if raw else plotly.tools.get_graph_obj(figure, obj_type="Figure")
 
 
 @_plotly_utils.utils.template_doc(**tools.get_config_file())
@@ -623,15 +616,13 @@ class Stream:
         host = six.moves.urllib.parse.urlparse(streaming_url).hostname or streaming_url
 
         headers = {"Host": host, "plotly-streamtoken": self.stream_id}
-        streaming_specs = {
+        return {
             "server": host,
             "port": port,
             "ssl_enabled": ssl_enabled,
             "ssl_verification_enabled": ssl_verification_enabled,
             "headers": headers,
         }
-
-        return streaming_specs
 
     def heartbeat(self, reconnect_on=(200, "", 408, 502)):
         """
@@ -653,10 +644,7 @@ class Stream:
 
     @property
     def connected(self):
-        if self._stream is None:
-            return False
-
-        return self._stream._isconnected()
+        return False if self._stream is None else self._stream._isconnected()
 
     def open(self):
         """
@@ -819,16 +807,17 @@ class image:
         response = v2.images.create(payload)
 
         headers = response.headers
-        if "content-type" in headers and headers["content-type"] in [
-            "image/png",
-            "image/jpeg",
-            "application/pdf",
-            "image/svg+xml",
-            "image/emf",
-        ]:
-            return response.content
-        elif "content-type" in headers and "json" in headers["content-type"]:
-            return response.json()["image"]
+        if "content-type" in headers:
+            if headers["content-type"] in [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "image/svg+xml",
+                "image/emf",
+            ]:
+                return response.content
+            elif "json" in headers["content-type"]:
+                return response.json()["image"]
 
     @classmethod
     def ishow(cls, figure_or_data, format="png", width=None, height=None, scale=None):
@@ -904,14 +893,13 @@ class image:
             filename += ".png"
         elif ext and not format:
             format = ext[1:]
-        elif not ext and format:
-            filename += "." + format
+        elif not ext:
+            filename += f".{format}"
 
         img = cls.get(figure_or_data, format, width, height, scale)
 
-        f = open(filename, "wb")
-        f.write(img)
-        f.close()
+        with open(filename, "wb") as f:
+            f.write(img)
 
 
 class file_ops:
@@ -956,9 +944,7 @@ class file_ops:
         try:
             cls.mkdirs(folder_path)
         except exceptions.PlotlyRequestError as e:
-            if "already exists" in e.message:
-                pass
-            else:
+            if "already exists" not in e.message:
                 raise e
 
 
@@ -1071,10 +1057,10 @@ class grid_ops:
         # Make a folder path
         if filename:
             if filename[-1] == "/":
-                filename = filename[0:-1]
+                filename = filename[:-1]
 
             paths = filename.split("/")
-            parent_path = "/".join(paths[0:-1])
+            parent_path = "/".join(paths[:-1])
             filename = paths[-1]
 
             if parent_path != "":
@@ -1150,8 +1136,7 @@ class grid_ops:
         if grid:
             existing_column_names = [c.name for c in grid]
             column_names.extend(existing_column_names)
-        duplicate_name = utils.get_first_duplicate(column_names)
-        if duplicate_name:
+        if duplicate_name := utils.get_first_duplicate(column_names):
             err = exceptions.NON_UNIQUE_COLUMN_MESSAGE.format(duplicate_name)
             raise exceptions.InputError(err)
 
@@ -1216,7 +1201,7 @@ class grid_ops:
         grid_ops.ensure_uploaded(grid_id)
 
         if grid:
-            n_columns = len([column for column in grid])
+            n_columns = len(list(grid))
             for row_i, row in enumerate(rows):
                 if len(row) != n_columns:
                     raise exceptions.InputError(
@@ -1236,7 +1221,7 @@ class grid_ops:
         v2.grids.row(fid, {"rows": rows})
 
         if grid:
-            longest_column_length = max([len(col.data) for col in grid])
+            longest_column_length = max(len(col.data) for col in grid)
 
             for column in grid:
                 n_empty_rows = longest_column_length - len(column.data)
@@ -1353,10 +1338,7 @@ def parse_grid_id_args(grid, grid_url):
     Raise an error if more than one argument was supplied.
 
     """
-    if grid is not None:
-        id_from_grid = grid.id
-    else:
-        id_from_grid = None
+    id_from_grid = grid.id if grid is not None else None
     args = [id_from_grid, grid_url]
     arg_names = ("grid", "grid_url")
 
@@ -1379,12 +1361,11 @@ def parse_grid_id_args(grid, grid_url):
         )
     else:
         supplied_arg_name = supplied_arg_names.pop()
-        if supplied_arg_name == "grid_url":
-            path = six.moves.urllib.parse.urlparse(grid_url).path
-            file_owner, file_id = path.replace("/~", "").split("/")[0:2]
-            return "{0}:{1}".format(file_owner, file_id)
-        else:
+        if supplied_arg_name != "grid_url":
             return grid.id
+        path = six.moves.urllib.parse.urlparse(grid_url).path
+        file_owner, file_id = path.replace("/~", "").split("/")[:2]
+        return "{0}:{1}".format(file_owner, file_id)
 
 
 def add_share_key_to_url(plot_url, attempt=0):
@@ -1395,7 +1376,7 @@ def add_share_key_to_url(plot_url, attempt=0):
     urlsplit = six.moves.urllib.parse.urlparse(plot_url)
     username = urlsplit.path.split("/")[1].split("~")[1]
     idlocal = urlsplit.path.split("/")[2]
-    fid = "{}:{}".format(username, idlocal)
+    fid = f"{username}:{idlocal}"
     body = {"share_key_enabled": True, "world_readable": False}
     response = v2.files.update(fid, body)
 
@@ -1414,8 +1395,7 @@ def add_share_key_to_url(plot_url, attempt=0):
             )
         add_share_key_to_url(plot_url, attempt)
 
-    url_share_key = plot_url + "?share_key=" + response.json()["share_key"]
-    return url_share_key
+    return f"{plot_url}?share_key=" + response.json()["share_key"]
 
 
 def get_grid(grid_url, raw=False):
@@ -1430,9 +1410,7 @@ def get_grid(grid_url, raw=False):
     response = v2.grids.content(fid)
     parsed_content = response.json()
 
-    if raw:
-        return parsed_content
-    return Grid(parsed_content, fid)
+    return parsed_content if raw else Grid(parsed_content, fid)
 
 
 def _create_or_update(data, filetype):
@@ -1450,7 +1428,7 @@ def _create_or_update(data, filetype):
     dict
         File info from API response
     """
-    api_module = getattr(v2, filetype + "s")
+    api_module = getattr(v2, f"{filetype}s")
 
     # lookup if pre-existing filename already exists
     if "parent_path" in data:
@@ -1468,10 +1446,7 @@ def _create_or_update(data, filetype):
 
             matching_file = json.loads(content)
 
-            if matching_file["filetype"] == filetype:
-                fid = matching_file["fid"]
-                res = api_module.update(fid, data)
-            else:
+            if matching_file["filetype"] != filetype:
                 raise _plotly_utils.exceptions.PlotlyError(
                     """
 '{filename}' is already a {other_filetype} in your account. 
@@ -1484,6 +1459,8 @@ changing the filename.""".format(
                     )
                 )
 
+            fid = matching_file["fid"]
+            res = api_module.update(fid, data)
         except exceptions.PlotlyRequestError:
             res = api_module.create(data)
     else:
@@ -1632,13 +1609,10 @@ class dashboard_ops:
         :param (bool) auto_open: automatically opens the dashboard in the
             browser.
         """
-        if sharing == "public":
+        if sharing in ["private", "secret"]:
+            world_readable = False
+        elif sharing == "public":
             world_readable = True
-        elif sharing == "private":
-            world_readable = False
-        elif sharing == "secret":
-            world_readable = False
-
         data = {
             "content": json.dumps(dashboard),
             "filename": filename,
@@ -1659,12 +1633,11 @@ class dashboard_ops:
 
     @classmethod
     def _get_all_dashboards(cls):
-        dashboards = []
         res = v2.dashboards.list().json()
 
-        for dashboard in res["results"]:
-            if not dashboard["deleted"]:
-                dashboards.append(dashboard)
+        dashboards = [
+            dashboard for dashboard in res["results"] if not dashboard["deleted"]
+        ]
         while res["next"]:
             res = v2.utils.request("get", res["next"]).json()
 
@@ -1683,11 +1656,7 @@ class dashboard_ops:
         dashboard = v2.utils.request(
             "get", dashboards[index]["api_urls"]["dashboards"]
         ).json()
-        if only_content:
-            dashboard_json = json.loads(dashboard["content"])
-            return dashboard_json
-        else:
-            return dashboard
+        return json.loads(dashboard["content"]) if only_content else dashboard
 
     @classmethod
     def get_dashboard(cls, dashboard_name):
@@ -1780,7 +1749,7 @@ def _extract_grid_graph_obj(obj_dict, reference_obj, grid, path):
     from chart_studio.grid_objs import Column
 
     for prop in list(obj_dict.keys()):
-        propsrc = "{}src".format(prop)
+        propsrc = f"{prop}src"
         if propsrc in reference_obj:
             val = obj_dict[prop]
             if is_array(val):
@@ -1853,7 +1822,7 @@ def _extract_grid_from_fig_like(fig, grid=None, path=""):
     elif isinstance(fig, dict):
         fig_dict = copy.deepcopy(fig) if copy_fig else fig
     else:
-        raise ValueError("Invalid figure type {}".format(type(fig)))
+        raise ValueError(f"Invalid figure type {type(fig)}")
 
     # Process traces
     reference_fig = Figure()
@@ -1866,14 +1835,12 @@ def _extract_grid_from_fig_like(fig, grid=None, path=""):
             ).data[-1]
 
         reference_trace = reference_traces[trace_type]
-        _extract_grid_graph_obj(
-            trace_dict, reference_trace, grid, path + "data.{}.".format(i)
-        )
+        _extract_grid_graph_obj(trace_dict, reference_trace, grid, f"{path}data.{i}.")
 
     # Process frames
     if "frames" in fig_dict:
         for i, frame_dict in enumerate(fig_dict["frames"]):
-            _extract_grid_from_fig_like(frame_dict, grid, "frames.{}.".format(i))
+            _extract_grid_from_fig_like(frame_dict, grid, f"frames.{i}.")
 
     return fig_dict, grid
 
@@ -1903,7 +1870,7 @@ def _set_grid_column_references(figure, grid):
         for prop in prop_path[:-1]:
             prop_parent = prop_parent[prop]
 
-        prop_parent[prop_path[-1] + "src"] = col.id
+        prop_parent[f"{prop_path[-1]}src"] = col.id
 
 
 def create_animations(figure, filename=None, sharing="public", auto_open=True):
@@ -2097,8 +2064,7 @@ def icreate_animations(figure, filename=None, sharing="public", auto_open=False)
     else:
         layout = {}
 
-    embed_options = dict()
-    embed_options["width"] = layout.get("width", "100%")
+    embed_options = {"width": layout.get("width", "100%")}
     embed_options["height"] = layout.get("height", 525)
     try:
         float(embed_options["width"])

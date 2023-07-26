@@ -36,7 +36,7 @@ def test_validator_coercion_PIL(validator):
 
     with open(img_path, "rb") as f:
         hex_bytes = base64.b64encode(f.read()).decode("ascii")
-        expected_uri = "data:image/png;base64," + hex_bytes
+        expected_uri = f"data:image/png;base64,{hex_bytes}"
 
     img = Image.open(img_path)
     coerce_val = validator.validate_coerce(img)

@@ -33,5 +33,5 @@ class ImagesTest(PlotlyApiTestCase):
         args, kwargs = self.request_mock.call_args
         method, url = args
         self.assertEqual(method, "post")
-        self.assertEqual(url, "{}/v2/images".format(self.plotly_api_domain))
+        self.assertEqual(url, f"{self.plotly_api_domain}/v2/images")
         self.assertEqual(kwargs["data"], _json.dumps(body, sort_keys=True))

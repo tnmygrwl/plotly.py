@@ -22,14 +22,13 @@ class FolderAPITestCase(PlotlyTestCase):
     def _random_filename(self):
         choice_chars = string.ascii_letters + string.digits
         random_chars = [random.choice(choice_chars) for _ in range(10)]
-        unique_filename = "Valid Folder " + "".join(random_chars)
-        return unique_filename
+        return "Valid Folder " + "".join(random_chars)
 
     def test_create_folder(self):
         try:
             py.file_ops.mkdirs(self._random_filename())
         except PlotlyRequestError as e:
-            self.fail("Expected this *not* to fail! Status: {}".format(e.status_code))
+            self.fail(f"Expected this *not* to fail! Status: {e.status_code}")
 
     def test_create_nested_folders(self):
         first_folder = self._random_filename()
@@ -37,7 +36,7 @@ class FolderAPITestCase(PlotlyTestCase):
         try:
             py.file_ops.mkdirs(nested_folder)
         except PlotlyRequestError as e:
-            self.fail("Expected this *not* to fail! Status: {}".format(e.status_code))
+            self.fail(f"Expected this *not* to fail! Status: {e.status_code}")
 
     def test_duplicate_folders(self):
         first_folder = self._random_filename()

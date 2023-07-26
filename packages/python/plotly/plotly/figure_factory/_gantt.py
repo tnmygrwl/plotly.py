@@ -44,9 +44,7 @@ def validate_gantt(df):
         num_of_rows = len(df.index)
         chart = []
         for index in range(num_of_rows):
-            task_dict = {}
-            for key in df:
-                task_dict[key] = df.iloc[index][key]
+            task_dict = {key: df.iloc[index][key] for key in df}
             chart.append(task_dict)
 
         return chart
@@ -104,14 +102,10 @@ def gantt(
         tasks.append(task)
 
     # create a scatter trace for every task group
-    scatter_data_dict = dict()
-    marker_data_dict = dict()
+    scatter_data_dict = {}
+    marker_data_dict = {}
 
-    if show_hover_fill:
-        hoverinfo = "name"
-    else:
-        hoverinfo = "skip"
-
+    hoverinfo = "name" if show_hover_fill else "skip"
     scatter_data_template = {
         "x": [],
         "y": [],
@@ -229,16 +223,20 @@ def gantt(
             showgrid=showgrid_x,
             zeroline=False,
             rangeselector=dict(
-                buttons=list(
-                    [
-                        dict(count=7, label="1w", step="day", stepmode="backward"),
-                        dict(count=1, label="1m", step="month", stepmode="backward"),
-                        dict(count=6, label="6m", step="month", stepmode="backward"),
-                        dict(count=1, label="YTD", step="year", stepmode="todate"),
-                        dict(count=1, label="1y", step="year", stepmode="backward"),
-                        dict(step="all"),
-                    ]
-                )
+                buttons=[
+                    dict(count=7, label="1w", step="day", stepmode="backward"),
+                    dict(
+                        count=1, label="1m", step="month", stepmode="backward"
+                    ),
+                    dict(
+                        count=6, label="6m", step="month", stepmode="backward"
+                    ),
+                    dict(count=1, label="YTD", step="year", stepmode="todate"),
+                    dict(
+                        count=1, label="1y", step="year", stepmode="backward"
+                    ),
+                    dict(step="all"),
+                ]
             ),
             type="date",
         ),
@@ -247,11 +245,7 @@ def gantt(
     data = [scatter_data_dict[k] for k in sorted(scatter_data_dict)]
     data += [marker_data_dict[k] for k in sorted(marker_data_dict)]
 
-    # fig = dict(
-    #     data=data, layout=layout
-    # )
-    fig = go.Figure(data=data, layout=layout)
-    return fig
+    return go.Figure(data=data, layout=layout)
 
 
 def gantt_colorscale(

@@ -28,10 +28,7 @@ class PlotlyJSONEncoder(_json.JSONEncoder):
 
         """
         # before python 2.7, 'true', 'false', 'null', were include here.
-        if const in ("Infinity", "-Infinity", "NaN"):
-            return None
-        else:
-            return const
+        return None if const in ("Infinity", "-Infinity", "NaN") else const
 
     def encode(self, o):
         """
@@ -227,7 +224,7 @@ def iso_to_plotly_time_string(iso_string):
 
 def template_doc(**names):
     def _decorator(func):
-        if not sys.version_info[:2] == (3, 2):
+        if sys.version_info[:2] != (3, 2):
             if func.__doc__ is not None:
                 func.__doc__ = func.__doc__.format(**names)
         return func
@@ -250,9 +247,8 @@ def _natural_sort_strings(vals, reverse=False):
 
 
 def _get_int_type():
-    np = get_module("numpy", should_load=False)
-    if np:
-        int_type = (int, np.integer)
-    else:
-        int_type = (int,)
-    return int_type
+    return (
+        (int, np.integer)
+        if (np := get_module("numpy", should_load=False))
+        else (int,)
+    )

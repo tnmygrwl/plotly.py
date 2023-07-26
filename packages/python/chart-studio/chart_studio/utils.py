@@ -114,10 +114,7 @@ def get_first_duplicate(items):
 ### source key
 def is_source_key(key):
     src_regex = re.compile(r".+src$")
-    if src_regex.match(key) is not None:
-        return True
-    else:
-        return False
+    return src_regex.match(key) is not None
 
 
 ### validation
@@ -161,11 +158,11 @@ def validate_world_readable_and_sharing_settings(option_set):
 
 
 def validate_plotly_domains(option_set):
-    domains_not_none = []
-    for d in ["plotly_domain", "plotly_api_domain"]:
-        if d in option_set and option_set[d]:
-            domains_not_none.append(option_set[d])
-
+    domains_not_none = [
+        option_set[d]
+        for d in ["plotly_domain", "plotly_api_domain"]
+        if d in option_set and option_set[d]
+    ]
     if not all(d.lower().startswith("https") for d in domains_not_none):
         warnings.warn(http_msg, category=UserWarning)
 
@@ -175,7 +172,4 @@ def set_sharing_and_world_readable(option_set):
         option_set["sharing"] = "public" if option_set["world_readable"] else "private"
 
     elif "sharing" in option_set and "world_readable" not in option_set:
-        if option_set["sharing"] == "public":
-            option_set["world_readable"] = True
-        else:
-            option_set["world_readable"] = False
+        option_set["world_readable"] = option_set["sharing"] == "public"
